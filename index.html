@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CheckList: Corporate Work Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#004080',
+                        background: '#fafeff',
+                        dark: '#474747',
+                        accent: '#FFC400', // Gold accent
+                        // EC Colors (Backgrounds for headers)
+                        ec_sarah: '#a855f7', // Purple
+                        ec_martin: '#3b82f6', // Blue
+                        ec_krystle: '#ec4899', // Pink
+                        ec_charlynn: '#10b981', // Green
+                        ec_sapnaa: '#6b7280', // Grey
+                        ec_yuniza: '#eab308', // Yellow
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fafeff;
+            color: #474747;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        .kanban-column {
+            min-width: 280px;
+        }
+
+        /* Mobile Optimization Rules */
+        @media (max-width: 640px) {
+            .kanban-column {
+                min-width: 85vw; /* Make columns wide on mobile for better readability */
+            }
+            #main-content {
+                padding: 0.75rem !important; /* Reduce padding on mobile */
+            }
+            h1 {
+                font-size: 1.25rem !important; /* Smaller title */
+            }
+            #view-kanban, #view-table {
+                padding: 0.25rem 0.75rem !important;
+                font-size: 0.75rem !important;
+            }
+        }
+
+        /* Drag and Drop Styles */
+        .kanban-card.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        .kanban-column-content.drag-over {
+            background-color: #e2e8f0; /* Darker highlight on hover */
+            border: 2px dashed #94a3b8;
+        }
+        
+        /* Loading overlay */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 50;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.3s;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Loading Screen -->
+    <div id="loading-overlay">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+        <h2 class="text-xl font-bold text-primary">CheckList</h2>
+        <p class="text-sm text-gray-500">Connecting to secure database...</p>
+    </div>
+
+    <!-- Navbar -->
+    <header class="bg-primary text-white shadow-md flex-none z-20">
+        <div class="px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2 sm:gap-4">
+                <h1 class="text-2xl font-bold tracking-tight">CheckList</h1>
+                <div class="h-6 w-px bg-blue-400 mx-2 hidden sm:block"></div>
+                <div class="flex bg-blue-900 rounded-lg p-1">
+                    <button id="view-kanban" class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white text-primary shadow-sm">Kanban</button>
+                    <button id="view-table" class="px-4 py-1.5 rounded-md text-sm font-medium text-blue-200 hover:text-white transition-colors">Table</button>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 text-sm">
+                <div id="auth-status" class="opacity-80 font-mono text-xs flex items-center gap-2">
+                    <span class="w-2 h-2 bg-green-400 rounded-full"></span> <span class="hidden sm:inline">Connected</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Toolbar (Filters) - Initially Hidden for Kanban, Shown for Table -->
+        <div id="toolbar" class="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex gap-2 sm:gap-4 items-center hidden overflow-x-auto whitespace-nowrap">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider hidden sm:inline">Filters:</span>
+            
+            <select id="filter-type" class="border border-gray-300 rounded text-sm px-2 py-1 focus:ring-2 focus:ring-primary focus:outline-none">
+                <option value="all">All Types</option>
+                <option value="ITQ">ITQ</option>
+                <option value="Tender">Tender</option>
+                <option value="SVP">SVP</option>
+            </select>
+
+            <select id="filter-ec" class="border border-gray-300 rounded text-sm px-2 py-1 focus:ring-2 focus:ring-primary focus:outline-none">
+                <option value="all">All Consultants</option>
+                <!-- Populated Dynamically -->
+            </select>
+
+            <select id="filter-status" class="border border-gray-300 rounded text-sm px-2 py-1 focus:ring-2 focus:ring-primary focus:outline-none">
+                <option value="active">Active (Hide Skipped)</option>
+                <option value="all">Show All</option>
+                <option value="Skipped">Skipped Only</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Pending Award">Pending Award</option>
+                <option value="Awarded">Awarded</option>
+                <option value="Not Awarded">Not Awarded</option>
+                <option value="No Award">No Award</option>
+            </select>
+            
+            <!-- Skipped Toggle for Table View convenience -->
+            <label class="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer ml-auto border-l pl-4">
+                <input type="checkbox" id="show-skipped-toggle" class="form-checkbox text-primary rounded">
+                <span>Show Skipped</span>
+            </label>
+        </div>
+        
+        <!-- Kanban Toolbar -->
+        <div id="kanban-toolbar" class="bg-gray-50 border-b border-gray-200 px-6 py-2 flex justify-end">
+             <span class="text-xs text-gray-400 italic">Drag cards to change status</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="flex-grow overflow-auto p-6 relative bg-[#fafeff]">
+        
+        <!-- Kanban View -->
+        <div id="kanban-view" class="space-y-10 pb-20">
+            <!-- Area 1: ITQ & Tenders -->
+            <section>
+                <h2 class="text-xl font-bold text-primary mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
+                    <span class="w-1.5 h-6 bg-accent rounded-full"></span>
+                    ITQ & Tenders
+                </h2>
+                <div class="flex gap-4 overflow-x-auto pb-4 snap-x" id="kanban-area-itq">
+                    <!-- Columns generated by JS -->
+                </div>
+            </section>
+
+            <!-- Area 2: SVP -->
+            <section class="mt-8">
+                <h2 class="text-xl font-bold text-primary mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
+                    <span class="w-1.5 h-6 bg-purple-600 rounded-full"></span>
+                    SVP
+                </h2>
+                <div class="flex gap-4 overflow-x-auto pb-4 snap-x" id="kanban-area-svp">
+                    <!-- Columns generated by JS -->
+                </div>
+            </section>
+        </div>
+
+        <!-- Table View -->
+        <div id="table-view" class="hidden pb-20">
+            <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">School / Programme</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Closing Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Assignment</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Costing</th>
+                                <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows generated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FAB (Add Button) -->
+    <button id="add-task-btn" class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-white rounded-full shadow-2xl hover:bg-blue-900 hover:scale-110 transition-all flex items-center justify-center z-30 focus:outline-none focus:ring-4 focus:ring-blue-300">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+    </button>
+
+    <!-- Modal -->
+    <div id="modal-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-primary text-white px-6 py-4 flex justify-between items-center">
+                <h3 id="modal-title" class="text-xl font-bold">New Task</h3>
+                <button id="close-modal-btn" class="text-blue-200 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-grow bg-gray-50">
+                <form id="task-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Section: Core Info -->
+                    <div class="md:col-span-2">
+                         <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 border-b pb-1">Core Details</h4>
+                    </div>
+
+                    <!-- Type, Closing, MOE -->
+                    <div class="space-y-4">
+                        <label class="block">
+                            <span class="text-sm font-semibold text-gray-700">Type<span class="text-red-500">*</span></span>
+                            <select id="f_type" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary">
+                                <option value="ITQ">ITQ</option>
+                                <option value="SVP">SVP</option>
+                                <option value="Tender">Tender</option>
+                            </select>
+                        </label>
+
+                        <div id="moe-field-group">
+                            <label class="block">
+                                <span class="text-sm font-semibold text-gray-700">MOE Code<span class="text-red-500">*</span></span>
+                                <input type="text" id="f_moe_code" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary">
+                            </label>
+                        </div>
+
+                        <label class="block">
+                            <span class="text-sm font-semibold text-gray-700">Closing Date<span class="text-red-500">*</span></span>
+                            <input type="date" id="f_closing_date" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary">
+                        </label>
+                    </div>
+
+                    <!-- School, Brand, Assignment -->
+                    <div class="space-y-4">
+                        <label class="block">
+                            <span class="text-sm font-semibold text-gray-700">School<span class="text-red-500">*</span></span>
+                            <input list="school-list" id="f_school" required placeholder="Type to search school..." class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary bg-white">
+                            <datalist id="school-list">
+                                <!-- Populated by JS -->
+                            </datalist>
+                        </label>
+
+                        <label class="block">
+                            <span class="text-sm font-semibold text-gray-700">Assignment<span class="text-red-500">*</span> (Auto-filled)</span>
+                            <input type="text" id="f_assignment" readonly class="bg-gray-200 mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm text-gray-700 cursor-not-allowed font-medium">
+                        </label>
+                    </div>
+
+                    <!-- Programme Info -->
+                     <div class="md:col-span-2 mt-2">
+                         <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 border-b pb-1">Programme & Specs</h4>
+                    </div>
+
+                    <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <label class="block">
+                            <span class="text-sm font-semibold text-gray-700">Programme Name<span class="text-red-500">*</span></span>
+                            <input type="text" id="f_programme" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary">
+                        </label>
+                        <label class="block">
+                            <span class="text-sm font-semibold text-gray-700">Brand<span class="text-red-500">*</span></span>
+                            <select id="f_brand" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary">
+                                <option value="">Select Brand...</option>
+                                <option value="Artelier">Artelier</option>
+                                <option value="Epitomedia">Epitomedia</option>
+                                <option value="Life Champs">Life Champs</option>
+                                <option value="Musicon">Musicon</option>
+                                <option value="Passionista">Passionista</option>
+                                <option value="Sports First">Sports First</option>
+                                <option value="Studio Wu">Studio Wu</option>
+                                <option value="Vivarch Enrichment">Vivarch Enrichment</option>
+                                <option value="Regenerate">Regenerate</option>
+                                <option value="STEMaker">STEMaker</option>
+                                <option value="Travelearn">Travelearn</option>
+                                <option value="Welless 365">Welless 365</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <!-- Specs and Folder -->
+                    <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <label class="block">
+                            <span class="text-sm font-semibold text-gray-700">Specifications (Link)<span class="text-red-500">*</span></span>
+                            <input type="url" id="f_specs" required placeholder="https://..." class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary">
+                        </label>
+                        <label class="block">
+                            <span class="text-sm font-semibold text-gray-700">Working Folder (Link)<span class="text-red-500">*</span></span>
+                            <input type="url" id="f_folder" required placeholder="https://..." class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary">
+                        </label>
+                    </div>
+
+                    <!-- Costing & Trainers -->
+                    <div class="md:col-span-2 bg-blue-50/50 p-4 rounded-lg border border-blue-100">
+                        <h4 class="font-bold text-primary mb-3 text-sm uppercase tracking-wide">Resources & Costing</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="block">
+                                <span class="text-sm font-semibold text-gray-700">Trainers</span>
+                                <input type="text" id="f_trainers" placeholder="Names..." class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary bg-white">
+                            </label>
+                            
+                            <label class="block">
+                                <span class="text-sm font-semibold text-gray-700">Costing Type<span class="text-red-500">*</span></span>
+                                <select id="f_costing_type" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary bg-white">
+                                    <option value="">Select Type...</option>
+                                    <option value="Package">Package</option>
+                                    <option value="Participant">Participant</option>
+                                    <option value="Hour">Hour</option>
+                                </select>
+                            </label>
+
+                            <!-- Conditional Costing Fields -->
+                            <div id="costing-details" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 hidden animate-fade-in-down">
+                                <label class="block">
+                                    <span class="text-sm font-semibold text-gray-700">Programme Specs</span>
+                                    <textarea id="f_cost_specs" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary bg-white"></textarea>
+                                </label>
+                                <label class="block">
+                                    <span class="text-sm font-semibold text-gray-700">Programme Cost</span>
+                                    <textarea id="f_cost_val" rows="3" placeholder="To be endorsed..." class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary bg-white"></textarea>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="md:col-span-2 border-t pt-4">
+                        <h4 class="font-bold text-gray-700 mb-2 text-sm uppercase">Contact Information<span class="text-red-500">*</span></h4>
+                        <div class="space-y-4">
+                            <!-- Contact 1 (Required parts) -->
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                                <input placeholder="Name (Req)" id="f_c1_name" required class="border rounded p-2 col-span-1 focus:border-primary focus:outline-none">
+                                <input placeholder="Designation" id="f_c1_des" class="border rounded p-2 focus:border-primary focus:outline-none">
+                                <input placeholder="Dept" id="f_c1_dept" class="border rounded p-2 focus:border-primary focus:outline-none">
+                                <input placeholder="Contact #" id="f_c1_cont" class="border rounded p-2 focus:border-primary focus:outline-none">
+                                <input placeholder="Email" id="f_c1_email" class="border rounded p-2 focus:border-primary focus:outline-none">
+                            </div>
+                            <!-- Contact 2 -->
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                                <input placeholder="Name" id="f_c2_name" class="border rounded p-2 col-span-1 focus:border-primary focus:outline-none">
+                                <input placeholder="Designation" id="f_c2_des" class="border rounded p-2 focus:border-primary focus:outline-none">
+                                <input placeholder="Dept" id="f_c2_dept" class="border rounded p-2 focus:border-primary focus:outline-none">
+                                <input placeholder="Contact #" id="f_c2_cont" class="border rounded p-2 focus:border-primary focus:outline-none">
+                                <input placeholder="Email" id="f_c2_email" class="border rounded p-2 focus:border-primary focus:outline-none">
+                            </div>
+                            <!-- Contact 3 -->
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                                <input placeholder="Name" id="f_c3_name" class="border rounded p-2 col-span-1 focus:border-primary focus:outline-none">
+                                <input placeholder="Designation" id="f_c3_des" class="border rounded p-2 focus:border-primary focus:outline-none">
+                                <input placeholder="Dept" id="f_c3_dept" class="border rounded p-2 focus:border-primary focus:outline-none">
+                                <input placeholder="Contact #" id="f_c3_cont" class="border rounded p-2 focus:border-primary focus:outline-none">
+                                <input placeholder="Email" id="f_c3_email" class="border rounded p-2 focus:border-primary focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes & Status & Appointment -->
+                    <div class="md:col-span-2 border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <label class="block">
+                            <span class="text-sm font-semibold text-gray-700">Notes</span>
+                            <textarea id="f_notes" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary"></textarea>
+                        </label>
+
+                        <div class="space-y-4">
+                            <label class="block">
+                                <span class="text-sm font-semibold text-gray-700">Appointment (Date & Time)</span>
+                                <input type="datetime-local" id="f_appointment" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary">
+                            </label>
+
+                            <label class="block">
+                                <span class="text-sm font-semibold text-gray-700">Status<span class="text-red-500">*</span></span>
+                                <select id="f_status" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm focus:ring-primary focus:border-primary font-semibold text-primary">
+                                    <option value="In Progress" selected>In Progress</option>
+                                    <option value="Pending Award">Pending Award</option>
+                                    <option value="Awarded">Awarded</option>
+                                    <option value="Not Awarded">Not Awarded</option>
+                                    <option value="No Award">No Award</option>
+                                    <option value="Skipped">Skipped</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-gray-100 px-6 py-4 flex justify-between border-t items-center rounded-b-xl">
+                <button type="button" id="delete-btn" class="text-red-600 hover:text-red-800 font-bold text-sm hidden flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    Delete Task
+                </button>
+                <div class="flex gap-3 ml-auto">
+                    <button type="button" id="cancel-btn" class="px-5 py-2.5 border border-gray-300 rounded-md text-gray-700 hover:bg-white font-semibold transition">Cancel</button>
+                    <button type="button" id="save-btn" class="px-6 py-2.5 bg-primary text-white rounded-md hover:bg-blue-900 font-bold shadow-md transition transform hover:-translate-y-0.5">Save Task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase & Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, doc, addDoc, setDoc, onSnapshot, collection, query, updateDoc, deleteDoc, serverTimestamp, 
+            where, getDocs, orderBy
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CUSTOM KEYS FROM USER ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAgDFeTSfSfYaUPoDLwmBuPUwmdtd9QuxM",
+            authDomain: "checklist-c4255.firebaseapp.com",
+            projectId: "checklist-c4255",
+            storageBucket: "checklist-c4255.firebasestorage.app",
+            messagingSenderId: "64837874160",
+            appId: "1:64837874160:web:9fc4a131f16a33e9f3ed35"
+        };
+        const appId = "checklist-app-main";
+
+        // --- REFERENCE DATA ---
+        window.SCHOOL_DATA = [
+            { school: "Greendale Primary School", consultant: "Charlynn", zone: "East" },
+            { school: "Horizon Primary School", consultant: "Charlynn", zone: "East" },
+            { school: "Punggol Secondary School", consultant: "Charlynn", zone: "East" },
+            { school: "Admiralty Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Admiralty Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Ahmad Ibrahim Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Catholic High School (Primary)", consultant: "Charlynn", zone: "North" },
+            { school: "Catholic High School (Secondary)", consultant: "Charlynn", zone: "North" },
+            { school: "CHIJ St Nicholas (Primary)", consultant: "Charlynn", zone: "North" },
+            { school: "CHIJ St Nicholas (Secondary)", consultant: "Charlynn", zone: "North" },
+            { school: "CHIJ St. Joseph's Convent", consultant: "Charlynn", zone: "North" },
+            { school: "Chung Cheng High School (Yishun)", consultant: "Charlynn", zone: "North" },
+            { school: "Endeavour Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Evergreen Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Evergreen Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Greenwood Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Hougang Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Huamin Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Innova Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Mee Toh School", consultant: "Charlynn", zone: "North" },
+            { school: "Nanyang Polytechnic", consultant: "Charlynn", zone: "North" },
+            { school: "Naval Base Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Naval Base Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "North Spring Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "North View Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Orchid Park Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Palm View Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Peiying Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Rosyth School", consultant: "Charlynn", zone: "North" },
+            { school: "Seng Kang Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Seng Kang Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Singapore Sports School", consultant: "Charlynn", zone: "North" },
+            { school: "Spectra Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Wellington Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Woodlands Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Woodlands Ring Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Woodlands Ring Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Woodlands Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Xinmin Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Xinmin Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Yishun Innova Junior College", consultant: "Charlynn", zone: "North" },
+            { school: "Yishun Primary School", consultant: "Charlynn", zone: "North" },
+            { school: "Yishun Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Yishun Town Secondary School", consultant: "Charlynn", zone: "North" },
+            { school: "Pathlight Primary School", consultant: "Charlynn", zone: "South" },
+            { school: "Pathlight Secondary School", consultant: "Charlynn", zone: "South" },
+            { school: "Serangoon Secondary School", consultant: "Charlynn", zone: "South" },
+            { school: "Singapore Chinese Girls' School (Independent)", consultant: "Charlynn", zone: "South" },
+            { school: "Singapore Chinese Girls' School (Primary)", consultant: "Charlynn", zone: "South" },
+            { school: "Anglican High School", consultant: "Krystle", zone: "East" },
+            { school: "Angsana Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Casuarina Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Changkat Changi Secondary School", consultant: "Krystle", zone: "East" },
+            { school: "Changkat Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Chongzheng Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Chung Cheng High School (Main)", consultant: "Krystle", zone: "East" },
+            { school: "Damai Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Damai Secondary School", consultant: "Krystle", zone: "East" },
+            { school: "East Spring Secondary School", consultant: "Krystle", zone: "East" },
+            { school: "East View Primary", consultant: "Krystle", zone: "East" },
+            { school: "Gongshang Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Hai Sing Catholic School", consultant: "Krystle", zone: "East" },
+            { school: "Haig Girls' School", consultant: "Krystle", zone: "East" },
+            { school: "ITE College East", consultant: "Krystle", zone: "East" },
+            { school: "Loyang View Secondary School", consultant: "Krystle", zone: "East" },
+            { school: "Maha Bodhi School", consultant: "Krystle", zone: "East" },
+            { school: "Northshore Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Paya Lebar Methodist Girls' School (Primary)", consultant: "Krystle", zone: "East" },
+            { school: "Paya Lebar Methodist Girls' School (Secondary)", consultant: "Krystle", zone: "East" },
+            { school: "Poi Ching School", consultant: "Krystle", zone: "East" },
+            { school: "Springfield Secondary School", consultant: "Krystle", zone: "East" },
+            { school: "St Stephen's Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Telok Kurau Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Victoria School", consultant: "Krystle", zone: "East" },
+            { school: "Yumin Primary School", consultant: "Krystle", zone: "East" },
+            { school: "Fern Green Primary School", consultant: "Krystle", zone: "North" },
+            { school: "Ang Mo Kio Secondary School", consultant: "Krystle", zone: "South" },
+            { school: "Bukit Merah Secondary School", consultant: "Krystle", zone: "South" },
+            { school: "Catholic Junior College", consultant: "Krystle", zone: "South" },
+            { school: "CHIJ Our Lady of Good Counsel", consultant: "Krystle", zone: "South" },
+            { school: "CHIJ St. Theresa's Convent", consultant: "Krystle", zone: "South" },
+            { school: "Crescent Girls' School", consultant: "Krystle", zone: "South" },
+            { school: "Kuo Chuan Presbyterian Secondary School", consultant: "Krystle", zone: "South" },
+            { school: "National Junior College", consultant: "Krystle", zone: "South" },
+            { school: "Raffles Girls' School", consultant: "Krystle", zone: "South" },
+            { school: "Raffles Institution", consultant: "Krystle", zone: "South" },
+            { school: "School Of The Arts", consultant: "Krystle", zone: "South" },
+            { school: "St Margaret's Secondary School", consultant: "Krystle", zone: "South" },
+            { school: "Boon Lay Secondary School", consultant: "Krystle", zone: "West" },
+            { school: "Fuhua Primary School", consultant: "Krystle", zone: "West" },
+            { school: "Fuhua Secondary School", consultant: "Krystle", zone: "West" },
+            { school: "Greenridge Primary School", consultant: "Krystle", zone: "West" },
+            { school: "Greenridge Secondary School", consultant: "Krystle", zone: "West" },
+            { school: "Henry Park Primary School", consultant: "Krystle", zone: "West" },
+            { school: "Hua Yi Secondary School", consultant: "Krystle", zone: "West" },
+            { school: "Jurong Pioneer Junior College", consultant: "Krystle", zone: "West" },
+            { school: "Jurong Secondary School", consultant: "Krystle", zone: "West" },
+            { school: "Keming Primary School", consultant: "Krystle", zone: "West" },
+            { school: "Kranji Secondary School", consultant: "Krystle", zone: "West" },
+            { school: "Edgefield Primary School", consultant: "Martin", zone: "East" },
+            { school: "Edgefield Secondary School", consultant: "Martin", zone: "East" },
+            { school: "Ngee Ann Polytechnic", consultant: "Martin", zone: "East" },
+            { school: "Ahmad Ibrahim Primary School", consultant: "Martin", zone: "North" },
+            { school: "Anchor Green Primary School", consultant: "Martin", zone: "North" },
+            { school: "Anderson Primary School", consultant: "Martin", zone: "North" },
+            { school: "Anderson Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Anderson Serangoon Junior College", consultant: "Martin", zone: "North" },
+            { school: "Bowen Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Canberra Primary School", consultant: "Martin", zone: "North" },
+            { school: "Canberra Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Chongfu School", consultant: "Martin", zone: "North" },
+            { school: "Christ Church Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Compassvale Primary School", consultant: "Martin", zone: "North" },
+            { school: "Compassvale Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Fernvale Primary School", consultant: "Martin", zone: "North" },
+            { school: "Fuchun Primary School", consultant: "Martin", zone: "North" },
+            { school: "Fuchun Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Hougang Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Maris Stella High School (Primary)", consultant: "Martin", zone: "North" },
+            { school: "Maris Stella High School (Secondary)", consultant: "Martin", zone: "North" },
+            { school: "Marsiling Primary School", consultant: "Martin", zone: "North" },
+            { school: "Marsiling Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Montfort Junior School", consultant: "Martin", zone: "North" },
+            { school: "Montfort Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Nan Chiau High School", consultant: "Martin", zone: "North" },
+            { school: "Nan Chiau Primary School", consultant: "Martin", zone: "North" },
+            { school: "North Vista Primary School", consultant: "Martin", zone: "North" },
+            { school: "North Vista Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Northbrooks Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Northland Primary School", consultant: "Martin", zone: "North" },
+            { school: "Northland Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Northoaks Primary School", consultant: "Martin", zone: "North" },
+            { school: "Pei Hwa Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Qihua Primary School", consultant: "Martin", zone: "North" },
+            { school: "Republic Polytechnic", consultant: "Martin", zone: "North" },
+            { school: "Riverside Primary School", consultant: "Martin", zone: "North" },
+            { school: "Riverside Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Rivervale Primary School", consultant: "Martin", zone: "North" },
+            { school: "Sembawang Primary School", consultant: "Martin", zone: "North" },
+            { school: "Sembawang Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Si Ling Primary School", consultant: "Martin", zone: "North" },
+            { school: "Woodgrove Primary School", consultant: "Martin", zone: "North" },
+            { school: "Woodgrove Secondary School", consultant: "Martin", zone: "North" },
+            { school: "Xishan Primary School", consultant: "Martin", zone: "North" },
+            { school: "Yio Chu Kang Primary School", consultant: "Martin", zone: "North" },
+            { school: "Fairfield Methodist School (Primary)", consultant: "Martin", zone: "South" },
+            { school: "Methodist Girls' School (Secondary)", consultant: "Martin", zone: "West" },
+            { school: "Nan Hua High School", consultant: "Martin", zone: "West" },
+            { school: "Nan Hua Primary School", consultant: "Martin", zone: "West" },
+            { school: "New Town Secondary School", consultant: "Martin", zone: "West" },
+            { school: "NUS High School of Mathematics and Science", consultant: "Martin", zone: "West" },
+            { school: "Pei Hwa Presbyterian Primary School", consultant: "Martin", zone: "West" },
+            { school: "Regent Secondary School", consultant: "Martin", zone: "West" },
+            { school: "School of Science and Technology", consultant: "Martin", zone: "West" },
+            { school: "Singapore Polytechnic", consultant: "Martin", zone: "West" },
+            { school: "West Grove Primary School", consultant: "Martin", zone: "West" },
+            { school: "West View Primary School", consultant: "Martin", zone: "West" },
+            { school: "Westwood Primary School", consultant: "Martin", zone: "West" },
+            { school: "Yew Tee Primary School", consultant: "Martin", zone: "West" },
+            { school: "Zhenghua Primary School", consultant: "Martin", zone: "West" },
+            { school: "Zhenghua Secondary School", consultant: "Martin", zone: "West" },
+            { school: "Bedok Green Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Bedok Green Secondary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Canossa Catholic Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "CHIJ (Katong Convent)", consultant: "Sapnaa", zone: "East" },
+            { school: "CHIJ (Katong) Primary", consultant: "Sapnaa", zone: "East" },
+            { school: "Fengshan Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Junyuan Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Junyuan Secondary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Manjusri Secondary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Meridian Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Meridian Secondary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Ngee Ann Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Ngee Ann Secondary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Pasir Ris Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Pasir Ris Secondary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Red Swastika School", consultant: "Sapnaa", zone: "East" },
+            { school: "St Anthony's Canossian Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "St Patrick's School", consultant: "Sapnaa", zone: "East" },
+            { school: "St. Anthony's Canossian Secondary School", consultant: "Sapnaa", zone: "East" },
+            { school: "St. Hilda's Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "St. Hilda's Secondary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Tampines North Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Tao Nan School", consultant: "Sapnaa", zone: "East" },
+            { school: "Temasek Junior College", consultant: "Sapnaa", zone: "East" },
+            { school: "Temasek Polytechnic", consultant: "Sapnaa", zone: "East" },
+            { school: "Temasek Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Victoria Junior College", consultant: "Sapnaa", zone: "East" },
+            { school: "White Sands Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Yu Neng Primary School", consultant: "Sapnaa", zone: "East" },
+            { school: "Bartley Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Beatty Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Bendemeer Primary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Bendemeer Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Cedar Primary School", consultant: "Sapnaa", zone: "South" },
+            { school: "CHIJ Primary (Toa Payoh)", consultant: "Sapnaa", zone: "South" },
+            { school: "Fairfield Methodist School (Secondary)", consultant: "Sapnaa", zone: "South" },
+            { school: "Farrer Park Primary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Gan Eng Seng School", consultant: "Sapnaa", zone: "South" },
+            { school: "Holy Innocents' High School", consultant: "Sapnaa", zone: "South" },
+            { school: "Holy Innocents' Primary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Hong Wen School", consultant: "Sapnaa", zone: "South" },
+            { school: "Mayflower Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Nanyang Junior College", consultant: "Sapnaa", zone: "South" },
+            { school: "Outram Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Pei Chun Public School", consultant: "Sapnaa", zone: "South" },
+            { school: "Peicai Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Peirce Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Presbyterian High School", consultant: "Sapnaa", zone: "South" },
+            { school: "Queenstown Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "River Valley Primary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Serangoon Garden Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "St. Andrew's Junior College", consultant: "Sapnaa", zone: "South" },
+            { school: "St. Andrew's School (Junior)", consultant: "Sapnaa", zone: "South" },
+            { school: "St. Andrew's School (Secondary)", consultant: "Sapnaa", zone: "South" },
+            { school: "St. Joseph's Institution", consultant: "Sapnaa", zone: "South" },
+            { school: "St. Joseph's Institution Junior", consultant: "Sapnaa", zone: "South" },
+            { school: "Yangzheng Primary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Zhangde Primary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Zhonghua Primary School", consultant: "Sapnaa", zone: "South" },
+            { school: "Zhonghua Secondary School", consultant: "Sapnaa", zone: "South" },
+            { school: "CHIJ Secondary (Toa Payoh)", consultant: "Sarah", zone: "South" },
+            { school: "Anglo-Chinese Junior College", consultant: "Sarah", zone: "West" },
+            { school: "Assumption English Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Assumption Pathway School", consultant: "Sarah", zone: "West" },
+            { school: "Beacon Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Boon Lay Garden Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Bt Panjang Govt High School", consultant: "Sarah", zone: "West" },
+            { school: "Bukit Batok Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Bukit Panjang Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Bukit Timah Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Bukit View Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Bukit View Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "CHIJ Our Lady Queen of Peace", consultant: "Sarah", zone: "West" },
+            { school: "Chua Chu Kang Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Chua Chu Kang Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Clementi Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Clementi Town Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Commonwealth Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Concord Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Corporation Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Crest Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Dazhong Primary School", consultant: "Sarah", zone: "West" },
+            { school: "De La Salle School", consultant: "Sarah", zone: "West" },
+            { school: "Dunearn Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Frontier Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Hillgrove Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Hwa Chong Institution", consultant: "Sarah", zone: "West" },
+            { school: "ITE West", consultant: "Sarah", zone: "West" },
+            { school: "Jurong Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Jurong West Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Jurong West Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Jurongville Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Juying Pioneer Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Juying Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Kranji Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Lakeside Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Lianhua Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Methodist Girls' School (Primary)", consultant: "Sarah", zone: "West" },
+            { school: "Millennia Institute", consultant: "Sarah", zone: "West" },
+            { school: "Nanyang Girls' High School", consultant: "Sarah", zone: "West" },
+            { school: "Nanyang Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Pei Tong Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Princess Elizabeth Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Qifa Primary School", consultant: "Sarah", zone: "West" },
+            { school: "River Valley High School", consultant: "Sarah", zone: "West" },
+            { school: "Rulang Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Shuqun Primary School", consultant: "Sarah", zone: "West" },
+            { school: "South View Primary School", consultant: "Sarah", zone: "West" },
+            { school: "St. Anthony's Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Swiss Cottage Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Teck Whye Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Unity Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Unity Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "West Spring Primary School", consultant: "Sarah", zone: "West" },
+            { school: "West Spring Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Westwood Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Xingnan Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Yuan Ching Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Yuhua Primary School", consultant: "Sarah", zone: "West" },
+            { school: "Yuhua Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Bedok South Secondary School", consultant: "Yuniza", zone: "East" },
+            { school: "Bedok View Secondary School", consultant: "Yuniza", zone: "East" },
+            { school: "Broadrick Secondary School", consultant: "Yuniza", zone: "East" },
+            { school: "Dunman High School", consultant: "Yuniza", zone: "East" },
+            { school: "Dunman Secondary School", consultant: "Yuniza", zone: "East" },
+            { school: "East Spring Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Elias Park Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Geylang Methodist School (Primary)", consultant: "Yuniza", zone: "East" },
+            { school: "Geylang Methodist School (Secondary)", consultant: "Yuniza", zone: "East" },
+            { school: "Kong Hwa School", consultant: "Yuniza", zone: "East" },
+            { school: "Oasis Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Opera Estate Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Park View Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Pasir Ris Crest Secondary School", consultant: "Yuniza", zone: "East" },
+            { school: "Punggol Cove Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Punggol Green Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Punggol View Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Tampines Meridian Junior College", consultant: "Yuniza", zone: "East" },
+            { school: "Tampines Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Tampines Secondary School", consultant: "Yuniza", zone: "East" },
+            { school: "Tanjong Katong Girls' School", consultant: "Yuniza", zone: "East" },
+            { school: "Tanjong Katong Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Tanjong Katong Secondary School", consultant: "Yuniza", zone: "East" },
+            { school: "Valour Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Waterway Primary School", consultant: "Yuniza", zone: "East" },
+            { school: "Yusof Ishak Secondary School", consultant: "Yuniza", zone: "East" },
+            { school: "Eunoia Junior College", consultant: "Yuniza", zone: "North" },
+            { school: "Sengkang Green Primary School", consultant: "Yuniza", zone: "North" },
+            { school: "Springdale Primary School", consultant: "Yuniza", zone: "North" },
+            { school: "Ai Tong School", consultant: "Yuniza", zone: "South" },
+            { school: "Alexandra Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "Anglo-Chinese School (Barker Road)", consultant: "Yuniza", zone: "South" },
+            { school: "Anglo-Chinese School (Independent)", consultant: "Yuniza", zone: "South" },
+            { school: "Anglo-Chinese School (Junior)", consultant: "Yuniza", zone: "South" },
+            { school: "Blangah Rise Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "Deyi Secondary School", consultant: "Yuniza", zone: "South" },
+            { school: "Gan Eng Seng Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "Guangyang Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "Guangyang Secondary School", consultant: "Yuniza", zone: "South" },
+            { school: "Kheng Cheng School", consultant: "Yuniza", zone: "South" },
+            { school: "Marymount Convent School", consultant: "Yuniza", zone: "South" },
+            { school: "Mayflower Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "New Town Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "Punggol Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "Queenstown Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "Queensway Secondary School", consultant: "Yuniza", zone: "South" },
+            { school: "Radin Mas Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "St Gabriel's Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "St. Gabriel's Secondary School", consultant: "Yuniza", zone: "South" },
+            { school: "St. Margaret's School (Primary)", consultant: "Yuniza", zone: "South" },
+            { school: "Whitley Secondary School", consultant: "Yuniza", zone: "South" },
+            { school: "Xinghua Primary School", consultant: "Yuniza", zone: "South" },
+            { school: "Yio Chu Kang Secondary School", consultant: "Yuniza", zone: "South" },
+            { school: "Yuying Secondary School", consultant: "Yuniza", zone: "South" },
+            { school: "Kent Ridge Secondary School", consultant: "Sarah", zone: "West" },
+            { school: "Greendale Secondary School", consultant: "", zone: "East" },
+            { school: "Temasek Secondary School", consultant: "", zone: "East" },
+            { school: "Jiemin Primary School", consultant: "", zone: "North" },
+            { school: "Ang Mo Kio Primary School", consultant: "", zone: "South" },
+            { school: "Anglo-Chinese School (Primary)", consultant: "", zone: "South" },
+            { school: "Cantonment Primary School", consultant: "", zone: "South" },
+            { school: "Cedar Girls' Secondary School", consultant: "", zone: "South" },
+            { school: "CHIJ (Kellock)", consultant: "", zone: "South" },
+            { school: "CHIJ Our Lady of the Nativity", consultant: "", zone: "South" },
+            { school: "First Toa Payoh Primary School", consultant: "", zone: "South" },
+            { school: "Jing Shan Primary School", consultant: "", zone: "South" },
+            { school: "Kuo Chuan Presbyterian Primary School", consultant: "", zone: "South" },
+            { school: "Northlight School", consultant: "", zone: "South" },
+            { school: "Raffles Girls' Primary School", consultant: "", zone: "South" },
+            { school: "Teck Ghee Primary School", consultant: "", zone: "South" },
+            { school: "Townsville Primary School", consultant: "", zone: "South" },
+            { school: "Methodist Girls' School (Independent)", consultant: "", zone: "West" },
+            { school: "Pioneer Primary School", consultant: "", zone: "West" }
+        ];
+
+        // --- INIT VARIABLES ---
+        let db, auth, userId = null;
+        let allTasks = [];
+        let editingTaskId = null;
+        
+        // Colors for ECs (Backgrounds for Header)
+        const EC_BG_HEADER = {
+            "Sarah": "bg-[#a855f7]",
+            "Martin": "bg-[#3b82f6]",
+            "Krystle": "bg-[#ec4899]",
+            "Charlynn": "bg-[#10b981]",
+            "Sapnaa": "bg-[#6b7280]",
+            "Yuniza": "bg-[#eab308]",
+            "default": "bg-gray-400"
+        };
+        const EC_TEXT_HEADER = {
+            "default": "text-white"
+        };
+        
+        // Colors for ECs (Light Backgrounds for Table Rows)
+        const EC_BG_COLORS = {
+            "Sarah": "bg-purple-50 hover:bg-purple-100",
+            "Martin": "bg-blue-50 hover:bg-blue-100",
+            "Krystle": "bg-pink-50 hover:bg-pink-100",
+            "Charlynn": "bg-green-50 hover:bg-green-100",
+            "Sapnaa": "bg-gray-50 hover:bg-gray-100",
+            "Yuniza": "bg-yellow-50 hover:bg-yellow-100",
+            "default": "bg-white hover:bg-gray-50"
+        };
+
+        const KANBAN_STATUSES = ["In Progress", "Pending Award", "Awarded", "Not Awarded", "No Award", "Skipped"];
+
+        // --- INIT FIREBASE ---
+        async function initApp() {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                await signInAnonymously(auth);
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none');
+                        initListeners();
+                    } else {
+                        // Signed out
+                    }
+                });
+            } catch (e) {
+                console.error("Init Error", e);
+                document.getElementById('loading-overlay').innerHTML = `<p class="text-red-500">Error connecting to database.</p>`;
+            }
+
+            populateSchoolDatalist();
+        }
+
+        // --- DOM ELEMENTS ---
+        const kanbanView = document.getElementById('kanban-view');
+        const tableView = document.getElementById('table-view');
+        const toolbar = document.getElementById('toolbar');
+        const kanbanToolbar = document.getElementById('kanban-toolbar');
+        const modal = document.getElementById('modal-overlay');
+        const form = document.getElementById('task-form');
+
+        // --- NAVIGATION ---
+        document.getElementById('view-kanban').addEventListener('click', () => switchView('kanban'));
+        document.getElementById('view-table').addEventListener('click', () => switchView('table'));
+
+        function switchView(view) {
+            if (view === 'kanban') {
+                kanbanView.classList.remove('hidden');
+                tableView.classList.add('hidden');
+                toolbar.classList.add('hidden');
+                kanbanToolbar.classList.remove('hidden');
+                
+                document.getElementById('view-kanban').classList.replace('text-blue-200', 'text-primary');
+                document.getElementById('view-kanban').classList.add('bg-white', 'shadow-sm');
+                document.getElementById('view-kanban').classList.remove('hover:text-white');
+                
+                document.getElementById('view-table').classList.replace('text-primary', 'text-blue-200');
+                document.getElementById('view-table').classList.remove('bg-white', 'shadow-sm');
+                document.getElementById('view-table').classList.add('hover:text-white');
+                
+                renderKanban();
+            } else {
+                kanbanView.classList.add('hidden');
+                tableView.classList.remove('hidden');
+                toolbar.classList.remove('hidden');
+                kanbanToolbar.classList.add('hidden');
+
+                document.getElementById('view-table').classList.replace('text-blue-200', 'text-primary');
+                document.getElementById('view-table').classList.add('bg-white', 'shadow-sm');
+                document.getElementById('view-table').classList.remove('hover:text-white');
+
+                document.getElementById('view-kanban').classList.replace('text-primary', 'text-blue-200');
+                document.getElementById('view-kanban').classList.remove('bg-white', 'shadow-sm');
+                document.getElementById('view-kanban').classList.add('hover:text-white');
+                
+                renderTable();
+            }
+        }
+
+        // --- FORM LOGIC ---
+        function populateSchoolDatalist() {
+            const datalist = document.getElementById('school-list');
+            window.SCHOOL_DATA.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.school;
+                datalist.appendChild(opt);
+            });
+        }
+
+        document.getElementById('f_school').addEventListener('change', (e) => {
+            const selectedSchool = window.SCHOOL_DATA.find(s => s.school === e.target.value);
+            const assignField = document.getElementById('f_assignment');
+            if (selectedSchool && selectedSchool.consultant) {
+                assignField.value = `${selectedSchool.consultant}, ${selectedSchool.zone}`;
+            } else if (selectedSchool) {
+                 assignField.value = `Unassigned, ${selectedSchool.zone}`;
+            } else {
+                assignField.value = '';
+            }
+        });
+
+        document.getElementById('f_type').addEventListener('change', (e) => {
+            const moeGroup = document.getElementById('moe-field-group');
+            const moeInput = document.getElementById('f_moe_code');
+            if (e.target.value === 'ITQ') {
+                moeGroup.classList.remove('hidden');
+                moeInput.setAttribute('required', 'true');
+            } else {
+                moeGroup.classList.add('hidden');
+                moeInput.value = '';
+                moeInput.removeAttribute('required');
+            }
+        });
+
+        document.getElementById('f_costing_type').addEventListener('change', (e) => {
+            const details = document.getElementById('costing-details');
+            if (e.target.value) {
+                details.classList.remove('hidden');
+            } else {
+                details.classList.add('hidden');
+            }
+        });
+
+        // --- FIRESTORE LISTENERS ---
+        function initListeners() {
+            if (!userId) return;
+            const q = query(collection(db, `artifacts/${appId}/users/${userId}/tasks`));
+            
+            onSnapshot(q, (snapshot) => {
+                allTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                if (!kanbanView.classList.contains('hidden')) renderKanban();
+                else renderTable();
+            });
+        }
+
+        // --- SAVE / DELETE ---
+        async function saveTask(e) {
+            e.preventDefault();
+            if(!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
+            const formData = {
+                type: document.getElementById('f_type').value,
+                moe_code: document.getElementById('f_moe_code').value,
+                closing_date: document.getElementById('f_closing_date').value,
+                school: document.getElementById('f_school').value,
+                assignment: document.getElementById('f_assignment').value,
+                programme: document.getElementById('f_programme').value,
+                brand: document.getElementById('f_brand').value,
+                specs: document.getElementById('f_specs').value,
+                folder: document.getElementById('f_folder').value,
+                costing_type: document.getElementById('f_costing_type').value,
+                cost_specs: document.getElementById('f_cost_specs').value,
+                cost_val: document.getElementById('f_cost_val').value,
+                trainers: document.getElementById('f_trainers').value,
+                notes: document.getElementById('f_notes').value,
+                appointment: document.getElementById('f_appointment').value,
+                status: document.getElementById('f_status').value,
+                contact1: {
+                    name: document.getElementById('f_c1_name').value,
+                    des: document.getElementById('f_c1_des').value,
+                    dept: document.getElementById('f_c1_dept').value,
+                    cont: document.getElementById('f_c1_cont').value,
+                    email: document.getElementById('f_c1_email').value
+                },
+                contact2: {
+                    name: document.getElementById('f_c2_name').value,
+                    des: document.getElementById('f_c2_des').value,
+                    dept: document.getElementById('f_c2_dept').value,
+                    cont: document.getElementById('f_c2_cont').value,
+                    email: document.getElementById('f_c2_email').value
+                },
+                contact3: {
+                    name: document.getElementById('f_c3_name').value,
+                    des: document.getElementById('f_c3_des').value,
+                    dept: document.getElementById('f_c3_dept').value,
+                    cont: document.getElementById('f_c3_cont').value,
+                    email: document.getElementById('f_c3_email').value
+                },
+                updatedAt: serverTimestamp()
+            };
+
+            const ref = collection(db, `artifacts/${appId}/users/${userId}/tasks`);
+            try {
+                if (editingTaskId) {
+                    await updateDoc(doc(ref, editingTaskId), formData);
+                } else {
+                    formData.createdAt = serverTimestamp();
+                    await addDoc(ref, formData);
+                }
+                closeModal();
+            } catch (e) {
+                console.error("Save error", e);
+                alert("Error saving task: " + e.message);
+            }
+        }
+
+        async function deleteTask() {
+            if (!editingTaskId || !confirm("Are you sure you want to delete this task?")) return;
+            try {
+                await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/tasks`, editingTaskId));
+                closeModal();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // --- KANBAN DRAG & DROP LOGIC ---
+        window.allowDrop = (ev) => {
+            ev.preventDefault();
+            const colContent = ev.target.closest('.kanban-column-content');
+            if (colContent) {
+                 colContent.classList.add('drag-over');
+            }
+        }
+        
+        window.dragleave = (ev) => {
+            const colContent = ev.target.closest('.kanban-column-content');
+             if (colContent) {
+                 colContent.classList.remove('drag-over');
+            }
+        }
+
+        window.drag = (ev) => {
+            ev.dataTransfer.setData("text", ev.target.getAttribute('data-id'));
+            ev.target.classList.add('dragging');
+        }
+
+        window.drop = async (ev, newStatus) => {
+            ev.preventDefault();
+            const colContent = ev.target.closest('.kanban-column-content');
+            if (colContent) colContent.classList.remove('drag-over');
+
+            const taskId = ev.dataTransfer.getData("text");
+            const draggedEl = document.querySelector(`[data-id='${taskId}']`);
+            if (draggedEl) draggedEl.classList.remove('dragging');
+
+            if (taskId && newStatus) {
+                const taskRef = doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId);
+                await updateDoc(taskRef, { status: newStatus, updatedAt: serverTimestamp() });
+            }
+        }
+
+        // --- RENDER KANBAN ---
+        function renderKanban() {
+            const itqContainer = document.getElementById('kanban-area-itq');
+            const svpContainer = document.getElementById('kanban-area-svp');
+            itqContainer.innerHTML = '';
+            svpContainer.innerHTML = '';
+            
+            // All active tasks, no filtering of skipped because it has its own column now
+            const activeTasks = allTasks; 
+
+            const itqTenderTasks = activeTasks.filter(t => (t.type === 'ITQ' || t.type === 'Tender'));
+            const svpTasks = activeTasks.filter(t => t.type === 'SVP');
+
+            KANBAN_STATUSES.forEach(status => {
+                itqContainer.appendChild(createKanbanColumn(status, itqTenderTasks));
+                svpContainer.appendChild(createKanbanColumn(status, svpTasks));
+            });
+        }
+
+        function createKanbanColumn(status, tasks) {
+            const col = document.createElement('div');
+            col.className = 'kanban-column bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[600px] flex-shrink-0';
+            
+            const count = tasks.filter(t => t.status === status).length;
+            
+            // Make column header different for Skipped
+            const headerBg = status === 'Skipped' ? 'bg-gray-200' : 'bg-gray-50';
+            
+            col.innerHTML = `
+                <div class="p-3 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center ${headerBg} rounded-t-lg">
+                    <span class="text-sm uppercase tracking-wide">${status}</span>
+                    <span class="bg-white border border-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full font-bold">${count}</span>
+                </div>
+                <div class="kanban-column-content p-3 flex-grow overflow-y-auto space-y-3 bg-gray-50/30 custom-scrollbar transition-colors duration-200"
+                     ondragover="allowDrop(event)" 
+                     ondragleave="dragleave(event)"
+                     ondrop="drop(event, '${status}')">
+                </div>
+            `;
+
+            const list = col.querySelector('.kanban-column-content');
+            
+            // Sort
+            const colTasks = tasks.filter(t => t.status === status).sort((a, b) => {
+                const dateA = new Date(a.closing_date || '9999-12-31');
+                const dateB = new Date(b.closing_date || '9999-12-31');
+                const today = new Date();
+                return (dateA - today) - (dateB - today);
+            });
+
+            colTasks.forEach(task => {
+                const ecName = task.assignment ? task.assignment.split(',')[0].trim() : 'default';
+                const headerColor = EC_BG_HEADER[ecName] || EC_BG_HEADER['default'];
+                
+                const card = document.createElement('div');
+                card.className = `kanban-card bg-white rounded shadow-sm border border-gray-200 cursor-grab hover:shadow-md transition-all transform hover:-translate-y-1 overflow-hidden`;
+                card.setAttribute('draggable', 'true');
+                card.setAttribute('data-id', task.id);
+                card.ondragstart = (event) => drag(event);
+                
+                // Card Click vs Icon Click logic handled inside HTML
+                
+                // Formatted Date
+                const dateObj = new Date(task.closing_date);
+                const dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+                
+                // Header (Type + Date) with EC Color
+                card.innerHTML = `
+                    <div class="${headerColor} text-white px-3 py-1.5 flex justify-between items-center" onclick="window.openModalById('${task.id}')">
+                        <span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 rounded">${task.type}</span>
+                        <span class="text-xs font-medium flex items-center gap-1">
+                             <svg class="w-3 h-3 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            ${dateStr}
+                        </span>
+                    </div>
+                    
+                    <div class="p-3">
+                        <h4 class="text-sm font-bold text-gray-800 leading-snug mb-1 line-clamp-2 cursor-pointer hover:text-primary" onclick="window.openModalById('${task.id}')">${task.school}</h4>
+                        <div class="text-xs text-gray-500 mb-3 line-clamp-1">${task.programme}</div>
+                        
+                        <div class="flex justify-between items-center pt-2 border-t border-gray-50">
+                             <div class="flex gap-2">
+                                <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-blue-600 transition" title="Specifications">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </a>
+                                <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-yellow-600 transition" title="Working Folder">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                                </a>
+                             </div>
+                            <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700 truncate max-w-[100px]">${task.assignment ? task.assignment.split(',')[0] : 'Unassigned'}</span>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+
+            return col;
+        }
+
+        // --- RENDER TABLE ---
+        function getTaskBgColor(assignment) {
+             const ecName = assignment ? assignment.split(',')[0].trim() : 'default';
+            return EC_BG_COLORS[ecName] || EC_BG_COLORS['default'];
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            const fType = document.getElementById('filter-type').value;
+            const fEC = document.getElementById('filter-ec').value;
+            const fStatus = document.getElementById('filter-status').value;
+            const showSkipped = document.getElementById('show-skipped-toggle').checked;
+
+            updateECDropdown();
+
+            let filtered = allTasks.filter(t => {
+                if (fType !== 'all' && t.type !== fType) return false;
+                if (fStatus === 'active' && t.status === 'Skipped') return false;
+                if (fStatus === 'Skipped' && t.status !== 'Skipped') return false;
+                if (fStatus !== 'all' && fStatus !== 'active' && fStatus !== 'Skipped' && t.status !== fStatus) return false;
+                if (!showSkipped && t.status === 'Skipped' && fStatus !== 'Skipped') return false;
+                if (fEC !== 'all') {
+                    if (!t.assignment || !t.assignment.includes(fEC)) return false;
+                }
+                return true;
+            });
+
+            filtered.sort((a, b) => {
+                if (a.status === 'In Progress' && b.status !== 'In Progress') return -1;
+                if (a.status !== 'In Progress' && b.status === 'In Progress') return 1;
+                const dateA = new Date(a.closing_date || '9999-12-31');
+                const dateB = new Date(b.closing_date || '9999-12-31');
+                return dateA - dateB;
+            });
+
+            tbody.innerHTML = '';
+            filtered.forEach(task => {
+                const bgClass = getTaskBgColor(task.assignment);
+                const tr = document.createElement('tr');
+                tr.className = `transition cursor-pointer border-b border-gray-100 ${bgClass}`;
+                tr.onclick = (e) => {
+                    if(!e.target.closest('button') && !e.target.closest('a')) openModal(task);
+                };
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">${task.type}</td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-bold text-gray-900">${task.school}</div>
+                        <div class="text-xs text-gray-500">${task.programme}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${task.closing_date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <span class="bg-white border border-gray-200 px-2 py-1 rounded-md text-xs shadow-sm">${task.assignment || '-'}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-bold rounded-full 
+                        ${task.status === 'In Progress' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">
+                            ${task.status}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.costing_type || '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-4 justify-end items-center h-full">
+                        <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-blue-600" title="Specifications" onclick="event.stopPropagation()">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </a>
+                        <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-yellow-600" title="Working Folder" onclick="event.stopPropagation()">
+                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                        </a>
+                        <button class="text-primary hover:text-blue-900 font-semibold underline" onclick="event.stopPropagation(); window.openModalById('${task.id}')">Edit</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        window.openModalById = (id) => {
+            const task = allTasks.find(t => t.id === id);
+            if(task) openModal(task);
+        }
+
+        function updateECDropdown() {
+            const select = document.getElementById('filter-ec');
+            const currentVal = select.value;
+            const uniqueECs = new Set();
+            
+            allTasks.forEach(t => {
+                if (t.assignment) uniqueECs.add(t.assignment.split(',')[0].trim());
+            });
+            
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+
+            Array.from(uniqueECs).sort().forEach(ec => {
+                const opt = document.createElement('option');
+                opt.value = ec;
+                opt.textContent = ec;
+                if (ec === currentVal) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        document.getElementById('filter-type').addEventListener('change', renderTable);
+        document.getElementById('filter-ec').addEventListener('change', renderTable);
+        document.getElementById('filter-status').addEventListener('change', renderTable);
+        document.getElementById('show-skipped-toggle').addEventListener('change', renderTable);
+
+        // --- MODAL CONTROLS ---
+        function openModal(task = null) {
+            editingTaskId = task ? task.id : null;
+            form.reset();
+            
+            if (task) {
+                document.getElementById('modal-title').textContent = 'Edit Task';
+                document.getElementById('delete-btn').classList.remove('hidden');
+                
+                document.getElementById('f_type').value = task.type || 'ITQ';
+                document.getElementById('f_moe_code').value = task.moe_code || '';
+                document.getElementById('f_closing_date').value = task.closing_date || '';
+                document.getElementById('f_school').value = task.school || '';
+                document.getElementById('f_assignment').value = task.assignment || '';
+                document.getElementById('f_programme').value = task.programme || '';
+                document.getElementById('f_brand').value = task.brand || '';
+                document.getElementById('f_specs').value = task.specs || '';
+                document.getElementById('f_folder').value = task.folder || '';
+                document.getElementById('f_costing_type').value = task.costing_type || '';
+                document.getElementById('f_cost_specs').value = task.cost_specs || '';
+                document.getElementById('f_cost_val').value = task.cost_val || '';
+                document.getElementById('f_trainers').value = task.trainers || '';
+                document.getElementById('f_notes').value = task.notes || '';
+                document.getElementById('f_appointment').value = task.appointment || '';
+                document.getElementById('f_status').value = task.status || 'In Progress';
+
+                if (task.contact1) {
+                    document.getElementById('f_c1_name').value = task.contact1.name || '';
+                    document.getElementById('f_c1_des').value = task.contact1.des || '';
+                    document.getElementById('f_c1_dept').value = task.contact1.dept || '';
+                    document.getElementById('f_c1_cont').value = task.contact1.cont || '';
+                    document.getElementById('f_c1_email').value = task.contact1.email || '';
+                }
+                if (task.contact2) {
+                    document.getElementById('f_c2_name').value = task.contact2.name || '';
+                    document.getElementById('f_c2_des').value = task.contact2.des || '';
+                    document.getElementById('f_c2_dept').value = task.contact2.dept || '';
+                    document.getElementById('f_c2_cont').value = task.contact2.cont || '';
+                    document.getElementById('f_c2_email').value = task.contact2.email || '';
+                }
+                if (task.contact3) {
+                    document.getElementById('f_c3_name').value = task.contact3.name || '';
+                    document.getElementById('f_c3_des').value = task.contact3.des || '';
+                    document.getElementById('f_c3_dept').value = task.contact3.dept || '';
+                    document.getElementById('f_c3_cont').value = task.contact3.cont || '';
+                    document.getElementById('f_c3_email').value = task.contact3.email || '';
+                }
+
+                document.getElementById('f_type').dispatchEvent(new Event('change'));
+                document.getElementById('f_costing_type').dispatchEvent(new Event('change'));
+
+            } else {
+                document.getElementById('modal-title').textContent = 'New Task';
+                document.getElementById('delete-btn').classList.add('hidden');
+                document.getElementById('f_type').dispatchEvent(new Event('change'));
+                document.getElementById('f_costing_type').dispatchEvent(new Event('change'));
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+            editingTaskId = null;
+        }
+
+        document.getElementById('add-task-btn').addEventListener('click', () => openModal(null));
+        document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+        document.getElementById('cancel-btn').addEventListener('click', closeModal);
+        document.getElementById('save-btn').addEventListener('click', saveTask);
+        document.getElementById('delete-btn').addEventListener('click', deleteTask);
+
+        initApp();
+    </script>
+</body>
+</html>
