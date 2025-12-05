@@ -145,8 +145,11 @@
     <header class="glass border-b border-gray-200/50 shadow-sm flex-none z-20 sticky top-0">
         <div class="px-4 sm:px-6 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3 sm:gap-5">
-                <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg shadow-sm flex items-center justify-center text-white font-bold text-sm">CL</div>
+                <div class="flex items-center gap-1.5">
+                    <!-- Updated Logo: No Container, Primary Color -->
+                    <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
                     <h1 class="text-xl font-bold tracking-tight text-dark hidden sm:block">CheckList</h1>
                 </div>
                 
@@ -890,13 +893,13 @@
                 kanbanToolbar.classList.remove('hidden');
                 
                 // Toggle Button Styling
-                document.getElementById('view-kanban').classList.replace('text-blue-200', 'text-primary');
-                document.getElementById('view-kanban').classList.add('bg-white', 'shadow-sm');
-                document.getElementById('view-kanban').classList.remove('hover:text-white');
+                document.getElementById('view-kanban').classList.replace('text-gray-500', 'text-dark');
+                document.getElementById('view-kanban').classList.add('bg-white', 'shadow-sm', 'font-semibold');
+                document.getElementById('view-kanban').classList.remove('font-medium');
                 
-                document.getElementById('view-table').classList.replace('text-primary', 'text-blue-200');
-                document.getElementById('view-table').classList.remove('bg-white', 'shadow-sm');
-                document.getElementById('view-table').classList.add('hover:text-white');
+                document.getElementById('view-table').classList.replace('text-dark', 'text-gray-500');
+                document.getElementById('view-table').classList.remove('bg-white', 'shadow-sm', 'font-semibold');
+                document.getElementById('view-table').classList.add('font-medium');
                 
                 renderKanban();
             } else {
@@ -905,13 +908,13 @@
                 toolbar.classList.remove('hidden');
                 kanbanToolbar.classList.add('hidden');
 
-                document.getElementById('view-table').classList.replace('text-blue-200', 'text-primary');
-                document.getElementById('view-table').classList.add('bg-white', 'shadow-sm');
-                document.getElementById('view-table').classList.remove('hover:text-white');
+                document.getElementById('view-table').classList.replace('text-gray-500', 'text-dark');
+                document.getElementById('view-table').classList.add('bg-white', 'shadow-sm', 'font-semibold');
+                document.getElementById('view-table').classList.remove('font-medium');
 
-                document.getElementById('view-kanban').classList.replace('text-primary', 'text-blue-200');
-                document.getElementById('view-kanban').classList.remove('bg-white', 'shadow-sm');
-                document.getElementById('view-kanban').classList.add('hover:text-white');
+                document.getElementById('view-kanban').classList.replace('text-dark', 'text-gray-500');
+                document.getElementById('view-kanban').classList.remove('bg-white', 'shadow-sm', 'font-semibold');
+                document.getElementById('view-kanban').classList.add('font-medium');
                 
                 renderTable();
             }
@@ -940,15 +943,40 @@
         });
 
         document.getElementById('f_type').addEventListener('change', (e) => {
+            const type = e.target.value;
+            
+            // MOE Code Logic
             const moeGroup = document.getElementById('moe-field-group');
             const moeInput = document.getElementById('f_moe_code');
-            if (e.target.value === 'ITQ') {
+            const moeStar = document.getElementById('moe-star');
+
+            if (type === 'ITQ') {
                 moeGroup.classList.remove('hidden');
                 moeInput.setAttribute('required', 'true');
-            } else {
-                moeGroup.classList.add('hidden');
+                moeStar.classList.remove('hidden'); 
+            } else if (type === 'Tender') {
+                moeGroup.classList.remove('hidden'); 
+                moeInput.removeAttribute('required'); 
                 moeInput.value = '';
+                moeStar.classList.add('hidden'); 
+            } else {
+                // SVP
+                moeGroup.classList.add('hidden');
                 moeInput.removeAttribute('required');
+                moeInput.value = '';
+            }
+
+            // Specs Link Logic
+            const specsLabel = document.getElementById('specs-label');
+            const specsInput = document.getElementById('f_specs');
+
+            if (type === 'SVP') {
+                specsLabel.classList.add('hidden');
+                specsInput.removeAttribute('required');
+                specsInput.value = '';
+            } else {
+                specsLabel.classList.remove('hidden');
+                specsInput.setAttribute('required', 'true');
             }
         });
 
@@ -1215,13 +1243,13 @@
 
         function createKanbanColumn(status, tasks) {
             const col = document.createElement('div');
-            col.className = 'kanban-column bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[600px] flex-shrink-0 snap-center';
+            col.className = 'kanban-column bg-white rounded-2xl shadow-ios border border-gray-100 flex flex-col h-[600px] flex-shrink-0 snap-center';
             
             const count = tasks.filter(t => t.status === status).length;
             const headerBg = status === 'Skipped' ? 'bg-gray-200' : 'bg-gray-50';
             
             col.innerHTML = `
-                <div class="p-3 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center ${headerBg} rounded-t-lg">
+                <div class="p-4 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center ${headerBg} rounded-t-2xl">
                     <span class="text-sm uppercase tracking-wide">${status}</span>
                     <span class="bg-white border border-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full font-bold">${count}</span>
                 </div>
@@ -1248,7 +1276,7 @@
                 
                 const card = document.createElement('div');
                 // Use default cursor for mobile, drag-grab for wide
-                card.className = `kanban-card bg-white rounded shadow-sm border border-gray-200 cursor-grab hover:shadow-md transition-all transform hover:-translate-y-1 overflow-hidden select-none`;
+                card.className = `kanban-card bg-white rounded-xl shadow-sm border border-gray-100 cursor-grab hover:shadow-ios-hover transition-all transform hover:-translate-y-1 overflow-hidden select-none`;
                 
                 // Disable native drag on mobile based on width. We keep the attribute for desktop use.
                 card.setAttribute('draggable', window.innerWidth > 640 ? 'true' : 'false');
@@ -1264,8 +1292,8 @@
                 const dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
                 
                 card.innerHTML = `
-                    <div class="kanban-card-header ${headerColor} text-white px-3 py-1.5 flex justify-between items-center cursor-pointer active:cursor-grabbing" onclick="window.openModalById('${task.id}')">
-                        <span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 rounded pointer-events-none">${task.type}</span>
+                    <div class="kanban-card-header ${headerColor} text-white px-3 py-2 flex justify-between items-center cursor-pointer active:cursor-grabbing" onclick="window.openModalById('${task.id}')">
+                        <span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 py-0.5 rounded pointer-events-none">${task.type}</span>
                         <span class="text-xs font-medium flex items-center gap-1 pointer-events-none">
                              <svg class="w-3 h-3 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                             ${dateStr}
@@ -1278,10 +1306,10 @@
                         
                         <div class="flex justify-between items-center pt-2 border-t border-gray-50">
                              <div class="flex gap-2">
-                                <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-blue-600 transition p-1" title="Specifications" onclick="event.stopPropagation()">
+                                <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue transition p-1" title="Specifications" onclick="event.stopPropagation()">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                 </a>
-                                <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-yellow-600 transition p-1" title="Working Folder" onclick="event.stopPropagation()">
+                                <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent transition p-1" title="Working Folder" onclick="event.stopPropagation()">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
                                 </a>
                              </div>
@@ -1334,36 +1362,36 @@
             filtered.forEach(task => {
                 const bgClass = getTaskBgColor(task.assignment);
                 const tr = document.createElement('tr');
-                tr.className = `transition cursor-pointer border-b border-gray-100 ${bgClass}`;
+                tr.className = `cursor-pointer border-b border-gray-100 ${bgClass} hover:brightness-95`;
                 tr.onclick = (e) => {
                     if(!e.target.closest('button') && !e.target.closest('a')) openModal(task);
                 };
 
                 tr.innerHTML = `
-                    <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm font-bold text-gray-700">${task.type}</td>
-                    <td class="px-4 sm:px-6 py-3">
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">${task.type}</td>
+                    <td class="px-4 sm:px-6 py-4">
                         <div class="text-sm font-bold text-gray-900">${task.school}</div>
                         <div class="text-xs text-gray-500">${task.programme}</div>
                     </td>
-                    <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm text-gray-500 font-mono">${task.closing_date}</td>
-                    <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm text-gray-600">
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${task.closing_date}</td>
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         <span class="bg-white border border-gray-200 px-2 py-1 rounded-md text-xs shadow-sm">${task.assignment || '-'}</span>
                     </td>
-                    <td class="px-4 sm:px-6 py-3 whitespace-nowrap">
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
                         <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-bold rounded-full 
                         ${task.status === 'In Progress' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">
                             ${task.status}
                         </span>
                     </td>
-                    <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-sm text-gray-500">${task.costing_type || '-'}</td>
-                    <td class="px-4 sm:px-6 py-3 whitespace-nowrap text-right text-sm font-medium flex gap-4 justify-end items-center h-full">
-                        <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-blue-600" title="Specifications" onclick="event.stopPropagation()">
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.costing_type || '-'}</td>
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-4 justify-end items-center h-full">
+                        <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue transition" title="Specifications" onclick="event.stopPropagation()">
                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         </a>
-                        <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-yellow-600" title="Working Folder" onclick="event.stopPropagation()">
+                        <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent transition" title="Working Folder" onclick="event.stopPropagation()">
                              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
                         </a>
-                        <button class="text-primary hover:text-blue-900 font-semibold underline" onclick="event.stopPropagation(); window.openModalById('${task.id}')">Edit</button>
+                        <button class="text-ios_blue hover:text-blue-700 font-semibold" onclick="event.stopPropagation(); window.openModalById('${task.id}')">Edit</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1377,6 +1405,7 @@
 
         function updateECDropdown(currentVal) {
             const select = document.getElementById('filter-ec');
+            // If currentVal wasn't passed (initial load), try to keep existing value
             if (!currentVal) currentVal = select.value;
             
             const uniqueECs = new Set();
@@ -1384,6 +1413,7 @@
                 if (t.assignment) uniqueECs.add(t.assignment.split(',')[0].trim());
             });
             
+            // Rebuild options but keep value
             while (select.options.length > 1) {
                 select.remove(1);
             }
@@ -1395,6 +1425,7 @@
                 select.appendChild(opt);
             });
             
+            // Ensure value is set
             if (currentVal && currentVal !== 'all') select.value = currentVal;
             else select.value = 'all'; // Default to 'All Consultants'
         }
