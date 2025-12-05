@@ -70,18 +70,34 @@
             -webkit-backdrop-filter: saturate(180%) blur(20px);
         }
 
-        /* iOS Form Elements */
-        select, input, textarea {
+        /* iOS Form Elements - EXCLUDING CHECKBOXES so they show up */
+        select, input:not([type="checkbox"]), textarea {
             appearance: none;
             -webkit-appearance: none;
             background-color: #FFFFFF;
-            border: 1px solid #E5E5EA; /* iOS Separator colorish */
+            border: 1px solid #D1D5DB; /* border-gray-300 for visibility */
             transition: all 0.2s ease;
         }
-        select:focus, input:focus, textarea:focus {
+        
+        /* Default focus styles for general inputs */
+        select:focus, input:not([type="checkbox"]):focus, textarea:focus {
             outline: none;
             border-color: #007AFF;
             box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+        
+        /* Filter Selects Override - No blue glow */
+        .filter-select:focus {
+            box-shadow: none !important;
+            border-color: #E5E5EA !important;
+        }
+        
+        /* Ensure Checkboxes are visible */
+        input[type="checkbox"] {
+            accent-color: #007AFF;
+            width: 1rem;
+            height: 1rem;
+            cursor: pointer;
         }
         
         /* Custom Select Arrow */
@@ -98,6 +114,17 @@
             transform: translateY(-50%);
             pointer-events: none;
         }
+
+        /* Progress Bar Styles */
+        .progress-segment {
+            height: 4px;
+            flex: 1;
+            border-radius: 2px;
+            background-color: #E5E5EA;
+            transition: background-color 0.3s ease;
+        }
+        .progress-segment.active-light { background-color: #86EFAC; } /* Light Green */
+        .progress-segment.active-solid { background-color: #22C55E; } /* Solid Green */
 
         /* Mobile Optimization */
         @media (max-width: 640px) {
@@ -128,7 +155,6 @@
             transition: opacity 0.3s;
         }
         
-        /* Table Row Hover Animation */
         tr { transition: background-color 0.15s ease; }
     </style>
 </head>
@@ -141,23 +167,21 @@
         <p class="text-xs text-gray-400 font-medium mt-2">Connecting...</p>
     </div>
 
-    <!-- Navbar (Glassmorphism) -->
+    <!-- Navbar -->
     <header class="glass border-b border-gray-200/50 shadow-sm flex-none z-20 sticky top-0">
         <div class="px-4 sm:px-6 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3 sm:gap-5">
                 <div class="flex items-center gap-1.5">
-                    <!-- Updated Logo: No Container, Primary Color -->
                     <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                     </svg>
                     <h1 class="text-xl font-bold tracking-tight text-dark hidden sm:block">CheckList</h1>
                 </div>
                 
-                <!-- View Toggles (iOS Segmented Control Style) -->
                 <div class="flex bg-gray-200/80 p-1 rounded-lg">
                     <button id="view-kanban" class="px-3 sm:px-4 py-1 rounded-[6px] text-xs font-semibold transition-all shadow-sm bg-white text-dark">
                         <span class="hidden sm:inline">Kanban</span>
-                        <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                        <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"></path></svg>
                     </button>
                     <button id="view-table" class="px-3 sm:px-4 py-1 rounded-[6px] text-xs font-medium text-gray-500 hover:text-dark transition-all">
                         <span class="hidden sm:inline">Table</span>
@@ -172,42 +196,76 @@
             </div>
         </div>
         
-        <!-- Toolbar (Filters) -->
-        <div id="toolbar" class="px-4 sm:px-6 py-2 flex gap-3 items-center hidden overflow-x-auto whitespace-nowrap scrollbar-hide border-t border-gray-100">
-            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:inline mr-1">Filter By:</span>
+        <!-- Toolbar (Filters & Actions) -->
+        <div id="toolbar" class="px-4 sm:px-6 py-3 sm:py-2 gap-3 hidden border-t border-gray-100 flex flex-col sm:flex-row sm:items-center">
             
-            <div class="ios-select-wrapper">
-                <select id="filter-type" class="rounded-lg text-xs px-3 py-1.5 pr-8 font-medium focus:ring-2 focus:ring-ios_blue focus:border-transparent cursor-pointer">
-                    <option value="all" selected>All Types</option>
-                    <option value="ITQ">ITQ</option>
-                    <option value="Tender">Tender</option>
-                    <option value="SVP">SVP</option>
-                </select>
+            <!-- Mobile: Filters Button + Search -->
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <!-- CSV Actions -->
+                <div class="flex gap-1 border-r border-gray-200 pr-3 mr-1 shrink-0">
+                    <button id="export-btn" class="p-1.5 text-gray-500 hover:text-ios_blue bg-gray-50 rounded-lg transition" title="Export Full CSV">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    </button>
+                    <button id="import-trigger-btn" class="p-1.5 text-gray-500 hover:text-ios_blue bg-gray-50 rounded-lg transition" title="Import CSV">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    </button>
+                    <input type="file" id="import-file" class="hidden" accept=".csv">
+                </div>
+
+                <!-- Mobile Filter Trigger -->
+                <button id="mobile-filter-btn" class="sm:hidden px-3 py-1.5 bg-gray-100 rounded-lg text-xs font-semibold text-gray-700 flex items-center gap-1 hover:bg-gray-200 transition shrink-0" onclick="window.toggleMobileFilters()">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    Filters
+                </button>
+
+                <!-- Search Bar (Mobile Flexible, Desktop Fixed) -->
+                <div class="relative group flex-grow sm:flex-grow-0 sm:min-w-[220px]">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-gray-400 group-focus-within:text-ios_blue transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" id="table-search" class="block w-full pl-9 pr-3 py-1.5 border-none rounded-lg leading-5 bg-gray-100 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-ios_blue sm:text-xs transition-colors" placeholder="Find anything...">
+                </div>
             </div>
 
-            <div class="ios-select-wrapper">
-                <select id="filter-ec" class="rounded-lg text-xs px-3 py-1.5 pr-8 font-medium focus:ring-2 focus:ring-ios_blue focus:border-transparent cursor-pointer">
-                    <option value="all" selected>All Consultants</option>
-                </select>
-            </div>
+            <!-- Desktop Filters Row (Hidden on Mobile) -->
+            <div class="hidden sm:flex items-center gap-2 w-auto">
+                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:inline mr-1 border-l border-gray-200 pl-3 shrink-0">Filter:</span>
+                
+                <div class="ios-select-wrapper shrink-0">
+                    <select id="filter-type" class="filter-select rounded-lg text-base sm:text-sm px-3 py-1.5 pr-8 font-medium cursor-pointer">
+                        <option value="all" selected>All Types</option>
+                        <option value="ITQ">ITQ</option>
+                        <option value="Tender">Tender</option>
+                        <option value="SVP">SVP</option>
+                    </select>
+                </div>
 
-            <div class="ios-select-wrapper">
-                <select id="filter-status" class="rounded-lg text-xs px-3 py-1.5 pr-8 font-medium focus:ring-2 focus:ring-ios_blue focus:border-transparent cursor-pointer">
-                    <option value="active" selected>Active Tasks</option>
-                    <option value="all">Show All</option>
-                    <option value="Skipped">Skipped</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Pending Award">Pending Award</option>
-                    <option value="Awarded">Awarded</option>
-                    <option value="Not Awarded">Not Awarded</option>
-                    <option value="No Award">No Award</option>
-                </select>
+                <div class="ios-select-wrapper shrink-0">
+                    <select id="filter-ec" class="filter-select rounded-lg text-base sm:text-sm px-3 py-1.5 pr-8 font-medium cursor-pointer">
+                        <option value="all" selected>All Consultants</option>
+                    </select>
+                </div>
+
+                <div class="ios-select-wrapper shrink-0">
+                    <select id="filter-status" class="filter-select rounded-lg text-base sm:text-sm px-3 py-1.5 pr-8 font-medium cursor-pointer">
+                        <option value="active" selected>Active Tasks</option>
+                        <option value="all">Show All</option>
+                        <option value="Skipped">Skipped</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Pending Award">Pending Award</option>
+                        <option value="Awarded">Awarded</option>
+                        <option value="Not Awarded">Not Awarded</option>
+                        <option value="No Award">No Award</option>
+                    </select>
+                </div>
+                
+                <label class="flex items-center space-x-2 text-xs text-gray-500 cursor-pointer ml-auto sm:ml-0 border-l border-gray-200 pl-4 shrink-0 hover:text-dark transition">
+                    <input type="checkbox" id="show-skipped-toggle" class="rounded border-gray-300 text-ios_blue focus:ring-ios_blue">
+                    <span class="whitespace-nowrap">Show Skipped</span>
+                </label>
             </div>
-            
-            <label class="flex items-center space-x-2 text-xs text-gray-500 cursor-pointer ml-auto border-l border-gray-200 pl-4 shrink-0 hover:text-dark transition">
-                <input type="checkbox" id="show-skipped-toggle" class="rounded border-gray-300 text-ios_blue focus:ring-ios_blue">
-                <span>Show Skipped</span>
-            </label>
         </div>
         
         <!-- Kanban Toolbar -->
@@ -259,7 +317,7 @@
                                 <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">School / Programme</th>
                                 <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Due</th>
                                 <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Assignment</th>
-                                <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-40">Status</th>
                                 <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost</th>
                                 <th class="px-4 sm:px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -272,10 +330,99 @@
 
     </main>
 
-    <!-- FAB (Apple Style) -->
+    <!-- FAB -->
     <button id="add-task-btn" class="fixed bottom-8 right-6 w-14 h-14 bg-ios_blue text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center z-30 focus:outline-none active:scale-95">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
     </button>
+
+    <!-- Mobile Filter Bottom Sheet -->
+    <div id="mobile-filter-sheet" class="fixed inset-0 z-50 hidden">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onclick="window.toggleMobileFilters()"></div>
+        <!-- Sheet -->
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl transform transition-transform duration-300 translate-y-full flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white rounded-t-2xl">
+                <h3 class="text-lg font-bold text-dark">Filter & Sort</h3>
+                <button onclick="window.toggleMobileFilters()" class="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-6 overflow-y-auto pb-32"> <!-- Added padding bottom for safe scrolling -->
+                
+                <!-- Custom Mobile Filters -->
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Type</label>
+                    <div class="relative">
+                        <button id="mob-filter-type-btn" onclick="window.toggleCustomDropdown(event, 'mob-filter-type-list')" class="w-full text-left text-lg p-3 bg-gray-50 rounded-xl border border-gray-200 text-dark font-medium flex justify-between items-center active:bg-gray-100">
+                            <span id="mob-filter-type-label">All Types</span>
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div id="mob-filter-type-list" class="hidden absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                            <div onclick="window.setMobileFilter('type', 'all', 'All Types')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">All Types</div>
+                            <div onclick="window.setMobileFilter('type', 'ITQ', 'ITQ')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">ITQ</div>
+                            <div onclick="window.setMobileFilter('type', 'Tender', 'Tender')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">Tender</div>
+                            <div onclick="window.setMobileFilter('type', 'SVP', 'SVP')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">SVP</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Consultant</label>
+                    <div class="relative">
+                        <button id="mob-filter-ec-btn" onclick="window.toggleCustomDropdown(event, 'mob-filter-ec-list')" class="w-full text-left text-lg p-3 bg-gray-50 rounded-xl border border-gray-200 text-dark font-medium flex justify-between items-center active:bg-gray-100">
+                            <span id="mob-filter-ec-label">All Consultants</span>
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div id="mob-filter-ec-list" class="hidden absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                            <div onclick="window.setMobileFilter('ec', 'all', 'All Consultants')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">All Consultants</div>
+                            <!-- Dynamic Options Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Status</label>
+                    <div class="relative">
+                        <button id="mob-filter-status-btn" onclick="window.toggleCustomDropdown(event, 'mob-filter-status-list')" class="w-full text-left text-lg p-3 bg-gray-50 rounded-xl border border-gray-200 text-dark font-medium flex justify-between items-center active:bg-gray-100">
+                            <span id="mob-filter-status-label">Active Tasks</span>
+                            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div id="mob-filter-status-list" class="hidden absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                            <div onclick="window.setMobileFilter('status', 'active', 'Active Tasks')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">Active Tasks</div>
+                            <div onclick="window.setMobileFilter('status', 'all', 'Show All')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">Show All</div>
+                            <div onclick="window.setMobileFilter('status', 'Skipped', 'Skipped')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">Skipped</div>
+                            <div onclick="window.setMobileFilter('status', 'In Progress', 'In Progress')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">In Progress</div>
+                            <div onclick="window.setMobileFilter('status', 'Pending Award', 'Pending Award')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">Pending Award</div>
+                            <div onclick="window.setMobileFilter('status', 'Awarded', 'Awarded')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">Awarded</div>
+                            <div onclick="window.setMobileFilter('status', 'Not Awarded', 'Not Awarded')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">Not Awarded</div>
+                            <div onclick="window.setMobileFilter('status', 'No Award', 'No Award')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">No Award</div>
+                        </div>
+                    </div>
+                </div>
+
+                <label class="flex items-center justify-between p-3 bg-gray-50 rounded-xl cursor-pointer active:bg-gray-100">
+                    <span class="text-base font-medium text-dark">Show Skipped Tasks</span>
+                    <input type="checkbox" id="mob-show-skipped-toggle" class="w-6 h-6 text-ios_blue rounded focus:ring-ios_blue">
+                </label>
+            </div>
+            
+            <div class="p-4 border-t border-gray-100 bg-white pb-8">
+                <button onclick="window.toggleMobileFilters()" class="w-full bg-ios_blue text-white py-3 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition-transform">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Popover (Hidden by default) -->
+    <div id="progress-popover" class="fixed hidden z-50 bg-white rounded-xl shadow-xl border border-gray-100 w-72 transform transition-all duration-200" style="display:none;">
+        <div class="px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-xl flex justify-between items-center">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-500">Progress Tracker</h4>
+            <button onclick="window.closeProgressPopover()" class="text-gray-400 hover:text-dark"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        </div>
+        <div class="p-4 space-y-3" id="progress-list">
+            <!-- Generated Checkboxes -->
+        </div>
+    </div>
 
     <!-- Modal -->
     <div id="modal-overlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4 transition-all duration-300">
@@ -298,38 +445,48 @@
                     <div class="space-y-5">
                         <label class="block">
                             <span class="text-xs font-semibold text-gray-600 ml-1">Type <span class="text-red-500">*</span></span>
-                            <div class="ios-select-wrapper mt-1">
-                                <select id="f_type" required class="w-full rounded-xl px-4 py-3 text-sm font-medium text-dark focus:border-ios_blue">
+                            <!-- Custom Dropdown for Item Card - Type -->
+                            <div class="relative mt-1">
+                                <button type="button" onclick="window.toggleGenericDropdown(event, 'form-type-list')" class="w-full text-left text-sm p-3 bg-white rounded-xl border border-gray-300 text-dark font-medium flex justify-between items-center focus:border-ios_blue focus:ring-1 focus:ring-ios_blue transition">
+                                    <span id="form-type-label">ITQ</span>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <select id="f_type" class="hidden" required>
                                     <option value="ITQ">ITQ</option>
                                     <option value="SVP">SVP</option>
                                     <option value="Tender">Tender</option>
                                 </select>
+                                <div id="form-type-list" class="hidden absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                                    <div onclick="window.selectGenericOption(event, 'f_type', 'form-type-label', 'form-type-list', 'ITQ')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">ITQ</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_type', 'form-type-label', 'form-type-list', 'SVP')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">SVP</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_type', 'form-type-label', 'form-type-list', 'Tender')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Tender</div>
+                                </div>
                             </div>
                         </label>
 
                         <div id="moe-field-group">
                             <label class="block">
                                 <span class="text-xs font-semibold text-gray-600 ml-1">MOE Code <span id="moe-star" class="text-red-500">*</span></span>
-                                <input type="text" id="f_moe_code" class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue" placeholder="e.g. ITQ-2025-001">
+                                <input type="text" id="f_moe_code" class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark border-gray-300 focus:border-ios_blue" placeholder="e.g. ITQ-2025-001">
                             </label>
                         </div>
 
                         <label class="block">
                             <span class="text-xs font-semibold text-gray-600 ml-1">Closing Date <span class="text-red-500">*</span></span>
-                            <input type="date" id="f_closing_date" required class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue">
+                            <input type="date" id="f_closing_date" required class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark border-gray-300 focus:border-ios_blue">
                         </label>
                     </div>
 
                     <div class="space-y-5">
                         <label class="block">
                             <span class="text-xs font-semibold text-gray-600 ml-1">School <span class="text-red-500">*</span></span>
-                            <input list="school-list" id="f_school" required placeholder="Search school..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue bg-white">
+                            <input list="school-list" id="f_school" required placeholder="Search school..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark border-gray-300 focus:border-ios_blue bg-white">
                             <datalist id="school-list"></datalist>
                         </label>
 
                         <label class="block">
                             <span class="text-xs font-semibold text-gray-600 ml-1">Assignment <span class="text-red-500">*</span></span>
-                            <input type="text" id="f_assignment" readonly class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-gray-500 bg-gray-50 border-dashed cursor-not-allowed font-medium">
+                            <input type="text" id="f_assignment" readonly class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-gray-500 bg-gray-50 border border-gray-300 border-dashed cursor-not-allowed font-medium">
                         </label>
                     </div>
 
@@ -340,12 +497,17 @@
                     <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <label class="block">
                             <span class="text-xs font-semibold text-gray-600 ml-1">Programme Name <span class="text-red-500">*</span></span>
-                            <input type="text" id="f_programme" required class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue">
+                            <input type="text" id="f_programme" required class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark border-gray-300 focus:border-ios_blue">
                         </label>
                         <label class="block">
                             <span class="text-xs font-semibold text-gray-600 ml-1">Brand <span class="text-red-500">*</span></span>
-                            <div class="ios-select-wrapper mt-1">
-                                <select id="f_brand" required class="w-full rounded-xl px-4 py-3 text-sm font-medium text-dark focus:border-ios_blue">
+                            <!-- Custom Dropdown for Item Card - Brand -->
+                            <div class="relative mt-1">
+                                <button type="button" onclick="window.toggleGenericDropdown(event, 'form-brand-list')" class="w-full text-left text-sm p-3 bg-white rounded-xl border border-gray-300 text-dark font-medium flex justify-between items-center focus:border-ios_blue focus:ring-1 focus:ring-ios_blue transition">
+                                    <span id="form-brand-label">Select Brand...</span>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <select id="f_brand" class="hidden" required>
                                     <option value="">Select Brand...</option>
                                     <option value="Artelier">Artelier</option>
                                     <option value="Epitomedia">Epitomedia</option>
@@ -360,6 +522,20 @@
                                     <option value="Travelearn">Travelearn</option>
                                     <option value="Welless 365">Welless 365</option>
                                 </select>
+                                <div id="form-brand-list" class="hidden absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Artelier')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Artelier</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Epitomedia')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Epitomedia</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Life Champs')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Life Champs</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Musicon')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Musicon</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Passionista')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Passionista</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Sports First')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Sports First</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Studio Wu')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Studio Wu</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Vivarch Enrichment')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Vivarch Enrichment</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Regenerate')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Regenerate</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'STEMaker')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">STEMaker</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Travelearn')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Travelearn</div>
+                                    <div onclick="window.selectGenericOption(event, 'f_brand', 'form-brand-label', 'form-brand-list', 'Welless 365')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Welless 365</div>
+                                </div>
                             </div>
                         </label>
                     </div>
@@ -367,35 +543,40 @@
                     <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                         <label class="block" id="specs-label">
                             <span class="text-xs font-semibold text-gray-600 ml-1">Specifications Link <span class="text-red-500">*</span></span>
-                            <input type="url" id="f_specs" required placeholder="https://..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-blue-600 underline decoration-blue-300 focus:border-ios_blue">
+                            <input type="url" id="f_specs" required placeholder="https://..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-blue-600 border-gray-300 underline decoration-blue-300 focus:border-ios_blue">
                         </label>
                         <label class="block">
                             <span class="text-xs font-semibold text-gray-600 ml-1">Working Folder Link <span class="text-red-500">*</span></span>
-                            <input type="url" id="f_folder" required placeholder="https://..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-blue-600 underline decoration-blue-300 focus:border-ios_blue">
+                            <input type="url" id="f_folder" required placeholder="https://..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-blue-600 border-gray-300 underline decoration-blue-300 focus:border-ios_blue">
                         </label>
                     </div>
 
                     <div class="md:col-span-2 bg-gray-50/80 p-5 rounded-2xl border border-gray-200">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <!-- TRAINERS FIELD: Auto Numbering -->
-                            <label class="block">
-                                <span class="text-xs font-semibold text-gray-600 ml-1">Trainers</span>
-                                <textarea id="f_trainers" rows="3" placeholder="1. Name..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue"></textarea>
-                            </label>
-                            
+                            <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Trainers</span><input type="text" id="f_trainers" class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white border-gray-300 focus:border-ios_blue"></label>
                             <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Costing Type <span class="text-red-500">*</span></span>
-                                <div class="ios-select-wrapper mt-1">
-                                    <select id="f_costing_type" required class="w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue">
+                                <!-- Custom Dropdown for Item Card - Costing -->
+                                <div class="relative mt-1">
+                                    <button type="button" onclick="window.toggleGenericDropdown(event, 'form-costing-list')" class="w-full text-left text-sm p-3 bg-white rounded-xl border border-gray-300 text-dark font-medium flex justify-between items-center focus:border-ios_blue focus:ring-1 focus:ring-ios_blue transition">
+                                        <span id="form-costing-label">Select Type...</span>
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <select id="f_costing_type" class="hidden" required>
                                         <option value="">Select Type...</option>
                                         <option value="Package">Package</option>
                                         <option value="Participant">Participant</option>
                                         <option value="Hour">Hour</option>
                                     </select>
+                                    <div id="form-costing-list" class="hidden absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                                        <div onclick="window.selectGenericOption(event, 'f_costing_type', 'form-costing-label', 'form-costing-list', 'Package')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Package</div>
+                                        <div onclick="window.selectGenericOption(event, 'f_costing_type', 'form-costing-label', 'form-costing-list', 'Participant')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Participant</div>
+                                        <div onclick="window.selectGenericOption(event, 'f_costing_type', 'form-costing-label', 'form-costing-list', 'Hour')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Hour</div>
+                                    </div>
                                 </div>
                             </label>
                             <div id="costing-details" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
-                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Programme Specs</span><textarea id="f_cost_specs" rows="3" class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue"></textarea></label>
-                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Programme Cost</span><textarea id="f_cost_val" rows="3" class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue"></textarea></label>
+                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Programme Specs</span><textarea id="f_cost_specs" rows="3" class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white border-gray-300 focus:border-ios_blue"></textarea></label>
+                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Programme Cost</span><textarea id="f_cost_val" rows="3" class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white border-gray-300 focus:border-ios_blue"></textarea></label>
                             </div>
                         </div>
                     </div>
@@ -403,20 +584,25 @@
                     <div class="md:col-span-2 mt-2 border-t border-gray-100 pt-4">
                         <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Contact Person(s)</h4>
                         <div class="space-y-3">
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name (Req)" id="f_c1_name" required class="border rounded-lg p-2 col-span-1"><input placeholder="Designation" id="f_c1_des" class="border rounded-lg p-2"><input placeholder="Dept" id="f_c1_dept" class="border rounded-lg p-2"><input placeholder="Contact #" id="f_c1_cont" class="border rounded-lg p-2"><input placeholder="Email" id="f_c1_email" class="border rounded-lg p-2"></div>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name" id="f_c2_name" class="border rounded-lg p-2 col-span-1"><input placeholder="Designation" id="f_c2_des" class="border rounded-lg p-2"><input placeholder="Dept" id="f_c2_dept" class="border rounded-lg p-2"><input placeholder="Contact #" id="f_c2_cont" class="border rounded-lg p-2"><input placeholder="Email" id="f_c2_email" class="border rounded-lg p-2"></div>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name" id="f_c3_name" class="border rounded-lg p-2 col-span-1"><input placeholder="Designation" id="f_c3_des" class="border rounded-lg p-2"><input placeholder="Dept" id="f_c3_dept" class="border rounded-lg p-2"><input placeholder="Contact #" id="f_c3_cont" class="border rounded-lg p-2"><input placeholder="Email" id="f_c3_email" class="border rounded-lg p-2"></div>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name (Req)" id="f_c1_name" required class="border border-gray-300 rounded-lg p-2 col-span-1"><input placeholder="Designation" id="f_c1_des" class="border border-gray-300 rounded-lg p-2"><input placeholder="Dept" id="f_c1_dept" class="border border-gray-300 rounded-lg p-2"><input placeholder="Contact #" id="f_c1_cont" class="border border-gray-300 rounded-lg p-2"><input placeholder="Email" id="f_c1_email" class="border border-gray-300 rounded-lg p-2"></div>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name" id="f_c2_name" class="border border-gray-300 rounded-lg p-2 col-span-1"><input placeholder="Designation" id="f_c2_des" class="border border-gray-300 rounded-lg p-2"><input placeholder="Dept" id="f_c2_dept" class="border border-gray-300 rounded-lg p-2"><input placeholder="Contact #" id="f_c2_cont" class="border border-gray-300 rounded-lg p-2"><input placeholder="Email" id="f_c2_email" class="border border-gray-300 rounded-lg p-2"></div>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name" id="f_c3_name" class="border border-gray-300 rounded-lg p-2 col-span-1"><input placeholder="Designation" id="f_c3_des" class="border border-gray-300 rounded-lg p-2"><input placeholder="Dept" id="f_c3_dept" class="border border-gray-300 rounded-lg p-2"><input placeholder="Contact #" id="f_c3_cont" class="border border-gray-300 rounded-lg p-2"><input placeholder="Email" id="f_c3_email" class="border border-gray-300 rounded-lg p-2"></div>
                         </div>
                     </div>
 
                     <div class="md:col-span-2 border-t border-gray-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Notes</span><textarea id="f_notes" rows="3" class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue"></textarea></label>
+                        <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Notes</span><textarea id="f_notes" rows="3" class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark border-gray-300 focus:border-ios_blue"></textarea></label>
                         <div class="space-y-5">
-                            <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Appointment</span><input type="datetime-local" id="f_appointment" class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue"></label>
+                            <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Appointment</span><input type="datetime-local" id="f_appointment" class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark border-gray-300 focus:border-ios_blue"></label>
                             <label class="block">
                                 <span class="text-xs font-semibold text-gray-600 ml-1">Status <span class="text-red-500">*</span></span>
-                                <div class="ios-select-wrapper mt-1">
-                                    <select id="f_status" required class="w-full rounded-xl px-4 py-3 text-sm font-bold text-ios_blue focus:border-ios_blue">
+                                <!-- Custom Dropdown for Item Card - Status -->
+                                <div class="relative mt-1">
+                                    <button type="button" onclick="window.toggleGenericDropdown(event, 'form-status-list')" class="w-full text-left text-sm p-3 bg-white rounded-xl border border-gray-300 text-dark font-medium flex justify-between items-center focus:border-ios_blue focus:ring-1 focus:ring-ios_blue transition">
+                                        <span id="form-status-label">In Progress</span>
+                                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    <select id="f_status" class="hidden" required>
                                         <option value="In Progress" selected>In Progress</option>
                                         <option value="Pending Award">Pending Award</option>
                                         <option value="Awarded">Awarded</option>
@@ -424,6 +610,14 @@
                                         <option value="No Award">No Award</option>
                                         <option value="Skipped">Skipped</option>
                                     </select>
+                                    <div id="form-status-list" class="hidden absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                                        <div onclick="window.selectGenericOption(event, 'f_status', 'form-status-label', 'form-status-list', 'In Progress')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">In Progress</div>
+                                        <div onclick="window.selectGenericOption(event, 'f_status', 'form-status-label', 'form-status-list', 'Pending Award')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Pending Award</div>
+                                        <div onclick="window.selectGenericOption(event, 'f_status', 'form-status-label', 'form-status-list', 'Awarded')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Awarded</div>
+                                        <div onclick="window.selectGenericOption(event, 'f_status', 'form-status-label', 'form-status-list', 'Not Awarded')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Not Awarded</div>
+                                        <div onclick="window.selectGenericOption(event, 'f_status', 'form-status-label', 'form-status-list', 'No Award')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">No Award</div>
+                                        <div onclick="window.selectGenericOption(event, 'f_status', 'form-status-label', 'form-status-list', 'Skipped')" class="p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer text-sm">Skipped</div>
+                                    </div>
                                 </div>
                             </label>
                         </div>
@@ -431,23 +625,17 @@
                 </form>
             </div>
             
-            <!-- Modal Footer (Apple Style) -->
+            <!-- Modal Footer -->
             <div class="bg-white border-t border-gray-100 px-6 py-4 flex justify-between items-center rounded-b-3xl sticky bottom-0">
-                
-                <!-- DELETE Button -->
                 <button type="button" id="delete-btn" class="text-red-500 hover:text-red-600 font-medium text-sm hidden flex items-center gap-1 p-2 sm:p-0 transition">
                     <svg class="w-6 h-6 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     <span class="hidden sm:inline">Delete</span>
                 </button>
-                
                 <div class="flex gap-3 ml-auto">
-                    <!-- CANCEL Button -->
                     <button type="button" id="cancel-btn" class="px-4 py-3 sm:py-2 rounded-full sm:rounded-lg text-ios_blue hover:bg-blue-50 font-semibold transition flex items-center justify-center">
                         <svg class="w-6 h-6 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                         <span class="hidden sm:inline">Cancel</span>
                     </button>
-                    
-                    <!-- SAVE Button -->
                     <button type="button" id="save-btn" class="px-4 sm:px-8 py-3 sm:py-2 bg-ios_blue text-white rounded-full sm:rounded-lg hover:bg-blue-600 font-semibold shadow-ios transition transform active:scale-95 flex items-center justify-center">
                         <svg class="w-6 h-6 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                         <span class="hidden sm:inline">Save Task</span>
@@ -457,13 +645,12 @@
         </div>
     </div>
 
-    <!-- Firebase & Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, onSnapshot, collection, query, updateDoc, deleteDoc, serverTimestamp, where, getDocs, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, onSnapshot, collection, query, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CUSTOM KEYS FROM USER ---
+        // --- CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyAgDFeTSfSfYaUPoDLwmBuPUwmdtd9QuxM",
             authDomain: "checklist-c4255.firebaseapp.com",
@@ -474,7 +661,7 @@
         };
         const appId = "checklist-app-main";
 
-        // --- REFERENCE DATA ---
+        // --- SCHOOL DATA ---
         window.SCHOOL_DATA = [
             { school: "Greendale Primary School", consultant: "Charlynn", zone: "East" },
             { school: "Horizon Primary School", consultant: "Charlynn", zone: "East" },
@@ -819,567 +1006,255 @@
             { school: "Anglo-Chinese School (Primary)", consultant: "", zone: "South" },
         ];
 
-        // --- INIT VARIABLES ---
+        // --- INIT VARS ---
         let db, auth, userId = null;
         let allTasks = [];
         let editingTaskId = null;
-        
-        // Colors for ECs
+        let activePopoverTaskId = null;
+
         const EC_BG_HEADER = {
-            "Sarah": "bg-[#a855f7]",
-            "Martin": "bg-[#3b82f6]",
-            "Krystle": "bg-[#ec4899]",
-            "Charlynn": "bg-[#10b981]",
-            "Sapnaa": "bg-[#6b7280]",
-            "Yuniza": "bg-[#eab308]",
-            "default": "bg-gray-400"
+            "Sarah": "bg-[#a855f7]", "Martin": "bg-[#3b82f6]", "Krystle": "bg-[#ec4899]",
+            "Charlynn": "bg-[#10b981]", "Sapnaa": "bg-[#6b7280]", "Yuniza": "bg-[#eab308]", "default": "bg-gray-400"
         };
+        
+        // UPDATED COLORS: Darker pastels (200 for bg, 300 for hover) for better contrast
         const EC_BG_COLORS = {
-            "Sarah": "bg-purple-50 hover:bg-purple-100",
-            "Martin": "bg-blue-50 hover:bg-blue-100",
-            "Krystle": "bg-pink-50 hover:bg-pink-100",
-            "Charlynn": "bg-green-50 hover:bg-green-100",
-            "Sapnaa": "bg-gray-50 hover:bg-gray-100",
-            "Yuniza": "bg-yellow-50 hover:bg-yellow-100",
+            "Sarah": "bg-purple-200 hover:bg-purple-300", 
+            "Martin": "bg-blue-200 hover:bg-blue-300", 
+            "Krystle": "bg-pink-200 hover:bg-pink-300",
+            "Charlynn": "bg-green-200 hover:bg-green-300", 
+            "Sapnaa": "bg-gray-200 hover:bg-gray-300", 
+            "Yuniza": "bg-yellow-200 hover:bg-yellow-300", 
             "default": "bg-white hover:bg-gray-50"
         };
-
+        
         const KANBAN_STATUSES = ["In Progress", "Pending Award", "Awarded", "Not Awarded", "No Award", "Skipped"];
+        const PROGRESS_ITEMS = [
+            { id: 'proposal', label: 'Programme Proposal' },
+            { id: 'annex_b', label: 'Annex B - Price Proposal' },
+            { id: 'annex_f', label: 'Annex F - Instructor Deployment' },
+            { id: 'outline', label: 'Programme Outline' },
+            { id: 'track_record', label: 'Programme Track Record' },
+            { id: 'trainers_files', label: 'Trainers\' Files' },
+            { id: 'gebiz', label: 'GeBIZ Tracker Update' },
+            { id: 'email', label: 'Email Follow-up' }
+        ];
 
-        // --- INIT FIREBASE ---
+        // --- HELPER FUNCTIONS ---
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '-';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, ' ');
+            } catch (e) { return dateStr; }
+        };
+
+        const isAnnexBAutoChecked = (task) => {
+            return task.cost_val && task.cost_val.trim().length > 0;
+        };
+
+        const getProgressState = (task) => {
+            const p = task.progress || {};
+            // Item 2 (Annex B) logic
+            const annexB = p.annex_b || isAnnexBAutoChecked(task);
+            
+            const firstSix = [p.proposal, annexB, p.annex_f, p.outline, p.track_record, p.trainers_files];
+            const allFirstSix = firstSix.every(Boolean);
+            
+            const lastTwo = [p.gebiz, p.email];
+            const bothLastTwo = lastTwo.every(Boolean);
+
+            return {
+                proposal: p.proposal,
+                annex_b: annexB,
+                annex_f: p.annex_f,
+                outline: p.outline,
+                track_record: p.track_record,
+                trainers_files: p.trainers_files,
+                gebiz: p.gebiz,
+                email: p.email,
+                allFirstSix,
+                bothLastTwo
+            };
+        };
+
+        // --- FIREBASE INIT ---
         async function initApp() {
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                
-                // --- SHARED ACCESS CHANGE: Sign in ANONYMOUSLY ---
                 await signInAnonymously(auth);
-
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
-                        // Everyone uses the same public path, but we still need a userId for the path structure.
-                        userId = user.uid; 
+                        userId = user.uid;
                         document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none');
                         initListeners();
                     }
                 });
             } catch (e) {
                 console.error("Init Error", e);
-                document.getElementById('loading-overlay').innerHTML = `<p class="text-red-500">Error connecting to database.</p>`;
             }
-
             populateSchoolDatalist();
         }
-        
-        // --- PUBLIC DATA PATH ---
+
         function getTaskCollectionRef() {
             return collection(db, `artifacts/${appId}/public/data/tasks`);
         }
 
-
-        // --- DOM ELEMENTS ---
-        const kanbanView = document.getElementById('kanban-view');
-        const tableView = document.getElementById('table-view');
-        const toolbar = document.getElementById('toolbar');
-        const kanbanToolbar = document.getElementById('kanban-toolbar');
-        const modal = document.getElementById('modal-overlay');
-        const form = document.getElementById('task-form');
-
-        // --- NAVIGATION ---
-        document.getElementById('view-kanban').addEventListener('click', () => switchView('kanban'));
-        document.getElementById('view-table').addEventListener('click', () => switchView('table'));
-
-        function switchView(view) {
-            if (view === 'kanban') {
-                kanbanView.classList.remove('hidden');
-                tableView.classList.add('hidden');
-                toolbar.classList.add('hidden');
-                kanbanToolbar.classList.remove('hidden');
-                
-                // Toggle Button Styling
-                document.getElementById('view-kanban').classList.replace('text-gray-500', 'text-dark');
-                document.getElementById('view-kanban').classList.add('bg-white', 'shadow-sm', 'font-semibold');
-                document.getElementById('view-kanban').classList.remove('font-medium');
-                
-                document.getElementById('view-table').classList.replace('text-dark', 'text-gray-500');
-                document.getElementById('view-table').classList.remove('bg-white', 'shadow-sm', 'font-semibold');
-                document.getElementById('view-table').classList.add('font-medium');
-                
-                renderKanban();
-            } else {
-                kanbanView.classList.add('hidden');
-                tableView.classList.remove('hidden');
-                toolbar.classList.remove('hidden');
-                kanbanToolbar.classList.add('hidden');
-
-                document.getElementById('view-table').classList.replace('text-gray-500', 'text-dark');
-                document.getElementById('view-table').classList.add('bg-white', 'shadow-sm', 'font-semibold');
-                document.getElementById('view-table').classList.remove('font-medium');
-
-                document.getElementById('view-kanban').classList.replace('text-dark', 'text-gray-500');
-                document.getElementById('view-kanban').classList.remove('bg-white', 'shadow-sm', 'font-semibold');
-                document.getElementById('view-kanban').classList.add('font-medium');
-                
-                renderTable();
-            }
-        }
-
-        // --- FORM LOGIC ---
-        function populateSchoolDatalist() {
-            const datalist = document.getElementById('school-list');
-            window.SCHOOL_DATA.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.school;
-                datalist.appendChild(opt);
-            });
-        }
-
-        document.getElementById('f_school').addEventListener('change', (e) => {
-            const selectedSchool = window.SCHOOL_DATA.find(s => s.school === e.target.value);
-            const assignField = document.getElementById('f_assignment');
-            if (selectedSchool && selectedSchool.consultant) {
-                assignField.value = `${selectedSchool.consultant}, ${selectedSchool.zone}`;
-            } else if (selectedSchool) {
-                 assignField.value = `Unassigned, ${selectedSchool.zone}`;
-            } else {
-                assignField.value = '';
-            }
-        });
-
-        document.getElementById('f_type').addEventListener('change', (e) => {
-            const type = e.target.value;
-            
-            // MOE Code Logic
-            const moeGroup = document.getElementById('moe-field-group');
-            const moeInput = document.getElementById('f_moe_code');
-            const moeStar = document.getElementById('moe-star');
-
-            if (type === 'ITQ') {
-                moeGroup.classList.remove('hidden');
-                moeInput.setAttribute('required', 'true');
-                moeStar.classList.remove('hidden'); 
-            } else if (type === 'Tender') {
-                moeGroup.classList.remove('hidden'); 
-                moeInput.removeAttribute('required'); 
-                moeInput.value = '';
-                moeStar.classList.add('hidden'); 
-            } else {
-                // SVP
-                moeGroup.classList.add('hidden');
-                moeInput.removeAttribute('required');
-                moeInput.value = '';
-            }
-
-            // Specs Link Logic
-            const specsLabel = document.getElementById('specs-label');
-            const specsInput = document.getElementById('f_specs');
-
-            if (type === 'SVP') {
-                specsLabel.classList.add('hidden');
-                specsInput.removeAttribute('required');
-                specsInput.value = '';
-            } else {
-                specsLabel.classList.remove('hidden');
-                specsInput.setAttribute('required', 'true');
-            }
-        });
-
-        document.getElementById('f_costing_type').addEventListener('change', (e) => {
-            const details = document.getElementById('costing-details');
-            if (e.target.value) {
-                details.classList.remove('hidden');
-            } else {
-                details.classList.add('hidden');
-            }
-        });
-        
-        // Auto Numbering Logic
-        const trainerInput = document.getElementById('f_trainers');
-        
-        // Add 1. on focus if empty
-        trainerInput.addEventListener('focus', () => {
-            if(!trainerInput.value.trim()) {
-                trainerInput.value = "1. ";
-            }
-        });
-        
-        // Handle Enter key
-        trainerInput.addEventListener('keydown', (e) => {
-            if(e.key === 'Enter') {
-                e.preventDefault(); // Stop default newline
-                
-                const lines = trainerInput.value.split('\n');
-                const nextNum = lines.length + 1;
-                
-                // Append newline and next number
-                trainerInput.value += `\n${nextNum}. `;
-                
-                // Auto scroll to bottom
-                trainerInput.scrollTop = trainerInput.scrollHeight;
-            }
-        });
-
-        // --- FIRESTORE LISTENERS ---
+        // --- LISTENERS ---
         function initListeners() {
             if (!userId) return;
             const q = query(getTaskCollectionRef());
-            
             onSnapshot(q, (snapshot) => {
                 allTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                
-                // Update dropdown options based on new data, preserving current selections
                 updateFilters();
-
-                if (!kanbanView.classList.contains('hidden')) renderKanban();
-                else renderTable();
+                const view = document.getElementById('kanban-view').classList.contains('hidden') ? 'table' : 'kanban';
+                if (view === 'kanban') renderKanban(); else renderTable();
             });
         }
 
         function updateFilters() {
-             // Preserve current selections before update
-            const currentType = document.getElementById('filter-type').value;
-            const currentEC = document.getElementById('filter-ec').value;
-            const currentStatus = document.getElementById('filter-status').value;
-
-            updateECDropdown(currentEC);
-            
-            // Reapply selections after DOM updates
-            document.getElementById('filter-type').value = currentType;
-            document.getElementById('filter-ec').value = currentEC;
-            document.getElementById('filter-status').value = currentStatus;
-            
-            // Fix: Ensure default selection is displayed if filters were empty
-            if (currentType === '') document.getElementById('filter-type').value = 'all';
-            if (currentStatus === '') document.getElementById('filter-status').value = 'active';
-            if (currentEC === '') document.getElementById('filter-ec').value = 'all';
+             const currentEC = document.getElementById('filter-ec').value;
+             updateECDropdown(currentEC);
         }
 
-        // --- SAVE / DELETE ---
-        async function saveTask(e) {
-            e.preventDefault();
-            if(!form.checkValidity()) {
-                form.reportValidity();
-                return;
+        function updateECDropdown(currentVal) {
+            // Update desktop select
+            const deskSelect = document.getElementById('filter-ec');
+            if(deskSelect) {
+                while (deskSelect.options.length > 1) deskSelect.remove(1);
+                const uniqueECs = new Set();
+                allTasks.forEach(t => { if (t.assignment) uniqueECs.add(t.assignment.split(',')[0].trim()); });
+                Array.from(uniqueECs).sort().forEach(ec => {
+                    const opt = document.createElement('option');
+                    opt.value = ec; opt.textContent = ec; deskSelect.appendChild(opt);
+                });
+                if (currentVal && deskSelect.querySelector(`option[value="${currentVal}"]`)) deskSelect.value = currentVal;
+                else deskSelect.value = 'all';
             }
 
-            const formData = {
-                type: document.getElementById('f_type').value,
-                moe_code: document.getElementById('f_moe_code').value,
-                closing_date: document.getElementById('f_closing_date').value,
-                school: document.getElementById('f_school').value,
-                assignment: document.getElementById('f_assignment').value,
-                programme: document.getElementById('f_programme').value,
-                brand: document.getElementById('f_brand').value,
-                specs: document.getElementById('f_specs').value,
-                folder: document.getElementById('f_folder').value,
-                costing_type: document.getElementById('f_costing_type').value,
-                cost_specs: document.getElementById('f_cost_specs').value,
-                cost_val: document.getElementById('f_cost_val').value,
-                trainers: document.getElementById('f_trainers').value,
-                notes: document.getElementById('f_notes').value,
-                appointment: document.getElementById('f_appointment').value,
-                status: document.getElementById('f_status').value,
-                contact1: {
-                    name: document.getElementById('f_c1_name').value,
-                    des: document.getElementById('f_c1_des').value,
-                    dept: document.getElementById('f_c1_dept').value,
-                    cont: document.getElementById('f_c1_cont').value,
-                    email: document.getElementById('f_c1_email').value
-                },
-                contact2: {
-                    name: document.getElementById('f_c2_name').value,
-                    des: document.getElementById('f_c2_des').value,
-                    dept: document.getElementById('f_c2_dept').value,
-                    cont: document.getElementById('f_c2_cont').value,
-                    email: document.getElementById('f_c2_email').value
-                },
-                contact3: {
-                    name: document.getElementById('f_c3_name').value,
-                    des: document.getElementById('f_c3_des').value,
-                    dept: document.getElementById('f_c3_dept').value,
-                    cont: document.getElementById('f_c3_cont').value,
-                    email: document.getElementById('f_c3_email').value
-                },
-                updatedAt: serverTimestamp()
-            };
+            // Update Mobile Custom Dropdown
+            const mobList = document.getElementById('mob-filter-ec-list');
+            if(mobList) {
+                mobList.innerHTML = `<div onclick="window.setMobileFilter('ec', 'all', 'All Consultants')" class="p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer">All Consultants</div>`;
+                const uniqueECs = new Set();
+                allTasks.forEach(t => { if (t.assignment) uniqueECs.add(t.assignment.split(',')[0].trim()); });
+                Array.from(uniqueECs).sort().forEach(ec => {
+                    const div = document.createElement('div');
+                    div.className = "p-3 border-b border-gray-100 hover:bg-gray-50 active:bg-blue-50 cursor-pointer";
+                    div.textContent = ec;
+                    div.onclick = () => window.setMobileFilter('ec', ec, ec);
+                    mobList.appendChild(div);
+                });
+            }
+        }
 
-            const ref = getTaskCollectionRef();
-            try {
-                if (editingTaskId) {
-                    await updateDoc(doc(ref, editingTaskId), formData);
+        // --- MOBILE FILTER LOGIC ---
+        window.toggleMobileFilters = () => {
+            const sheet = document.getElementById('mobile-filter-sheet');
+            const sheetContent = sheet.querySelector('div.transform');
+            
+            if (sheet.classList.contains('hidden')) {
+                sheet.classList.remove('hidden');
+                setTimeout(() => { sheetContent.classList.remove('translate-y-full'); }, 10);
+            } else {
+                sheetContent.classList.add('translate-y-full');
+                setTimeout(() => { sheet.classList.add('hidden'); }, 300);
+            }
+        };
+
+        window.toggleCustomDropdown = (event, id) => {
+            event.stopPropagation();
+            // Close others first
+            ['mob-filter-type-list', 'mob-filter-ec-list', 'mob-filter-status-list'].forEach(lid => {
+                if(lid !== id) document.getElementById(lid).classList.add('hidden');
+            });
+
+            const list = document.getElementById(id);
+            const btn = event.currentTarget;
+            
+            if(list.classList.contains('hidden')) {
+                list.classList.remove('hidden');
+                // Calculate position relative to viewport height to decide up or down
+                const rect = btn.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                
+                // If less than 220px below, slide up
+                if(spaceBelow < 220) {
+                    list.classList.add('bottom-full', 'mb-1');
+                    list.classList.remove('mt-1');
                 } else {
-                    formData.createdAt = serverTimestamp();
-                    await addDoc(ref, formData);
+                    list.classList.remove('bottom-full', 'mb-1');
+                    list.classList.add('mt-1');
                 }
-                closeModal();
-            } catch (e) {
-                console.error("Save error", e);
-                alert("Error saving task: " + e.message);
+            } else {
+                list.classList.add('hidden');
             }
-        }
+        };
 
-        async function deleteTask() {
-            if (!editingTaskId || !confirm("Are you sure you want to delete this task?")) return;
-            try {
-                await deleteDoc(doc(getTaskCollectionRef(), editingTaskId));
-                closeModal();
-            } catch (e) {
-                console.error(e);
+        window.setMobileFilter = (key, value, label) => {
+            // Update Label
+            document.getElementById(`mob-filter-${key}-label`).textContent = label;
+            // Hide List
+            document.getElementById(`mob-filter-${key}-list`).classList.add('hidden');
+            // Update Desktop Source of Truth
+            const deskInput = document.getElementById(`filter-${key}`);
+            if(deskInput) {
+                deskInput.value = value;
+                refreshView();
             }
-        }
+        };
 
-        // --- KANBAN DRAG & DROP LOGIC (Mobile & Desktop) ---
-        let draggedItem = null;
-        let touchGhost = null;
-        let currentDropZone = null;
-
-        // Check if the screen is considered "narrow" (mobile)
-        const isMobileScreen = () => window.innerWidth <= 640;
-        
-        function handleTouchStart(e) {
-            // 1. Mobile Drag Disable Check
-            if (isMobileScreen()) return; 
-
-            if (!e.target.closest('.kanban-card-header')) return;
-            const card = e.target.closest('.kanban-card');
-            if (!card) return;
-
-            e.preventDefault(); 
-            draggedItem = card;
-            
-            touchGhost = card.cloneNode(true);
-            touchGhost.classList.add('touch-drag-ghost');
-            touchGhost.style.width = `${card.offsetWidth}px`;
-            touchGhost.style.height = `${card.offsetHeight}px`;
-            document.body.appendChild(touchGhost);
-
-            updateGhostPosition(e.touches[0]);
-            card.classList.add('dragging');
-        }
-
-        function handleTouchMove(e) {
-            if (!draggedItem || !touchGhost) return;
-            e.preventDefault();
-            
-            const touch = e.touches[0];
-            updateGhostPosition(touch);
-
-            touchGhost.style.display = 'none';
-            let elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-            touchGhost.style.display = 'block';
-
-            if (!elemBelow) return;
-
-            let dropZone = elemBelow.closest('.kanban-column-content');
-            
-            if (currentDropZone !== dropZone) {
-                if (currentDropZone) currentDropZone.classList.remove('drag-over');
-                currentDropZone = dropZone;
-                if (currentDropZone) currentDropZone.classList.add('drag-over');
-            }
-        }
-
-        function handleTouchEnd(e) {
-            if (!draggedItem) return;
-
-            if (touchGhost) {
-                touchGhost.remove();
-                touchGhost = null;
-            }
-            draggedItem.classList.remove('dragging');
-
-            if (currentDropZone) {
-                currentDropZone.classList.remove('drag-over');
-                const newStatus = currentDropZone.getAttribute('data-status');
-                const taskId = draggedItem.getAttribute('data-id');
-                
-                if (newStatus && taskId) {
-                    updateTaskStatus(taskId, newStatus);
-                }
-            }
-
-            draggedItem = null;
-            currentDropZone = null;
-        }
-
-        function updateGhostPosition(touch) {
-            if(touchGhost) {
-                touchGhost.style.left = (touch.clientX - touchGhost.offsetWidth / 2) + 'px';
-                touchGhost.style.top = (touch.clientY - touchGhost.offsetHeight / 2) + 'px';
-            }
-        }
-
-        async function updateTaskStatus(taskId, newStatus) {
-            const taskRef = doc(getTaskCollectionRef(), taskId);
-            await updateDoc(taskRef, { status: newStatus, updatedAt: serverTimestamp() });
-        }
-
-        window.allowDrop = (ev) => {
-            // 1. Mobile Drag Disable Check
-            if (isMobileScreen()) return; 
-            
-            ev.preventDefault();
-            const colContent = ev.target.closest('.kanban-column-content');
-            if (colContent) colContent.classList.add('drag-over');
-        }
-        
-        window.dragleave = (ev) => {
-            const colContent = ev.target.closest('.kanban-column-content');
-             if (colContent) colContent.classList.remove('drag-over');
-        }
-
-        window.drag = (ev) => {
-            // 1. Mobile Drag Disable Check
-            if (isMobileScreen()) return; 
-
-            ev.dataTransfer.setData("text", ev.target.getAttribute('data-id'));
-            ev.target.classList.add('dragging');
-        }
-
-        window.drop = async (ev, newStatus) => {
-            // 1. Mobile Drag Disable Check
-            if (isMobileScreen()) return; 
-
-            ev.preventDefault();
-            const colContent = ev.target.closest('.kanban-column-content');
-            if (colContent) colContent.classList.remove('drag-over');
-
-            const taskId = ev.dataTransfer.getData("text");
-            const draggedEl = document.querySelector(`[data-id='${taskId}']`);
-            if (draggedEl) draggedEl.classList.remove('dragging');
-
-            if (taskId && newStatus) {
-                updateTaskStatus(taskId, newStatus);
-            }
-        }
-
-        // --- RENDER KANBAN ---
-        function renderKanban() {
-            const itqContainer = document.getElementById('kanban-area-itq');
-            const svpContainer = document.getElementById('kanban-area-svp');
-            itqContainer.innerHTML = '';
-            svpContainer.innerHTML = '';
-            
-            const activeTasks = allTasks; 
-
-            const itqTenderTasks = activeTasks.filter(t => (t.type === 'ITQ' || t.type === 'Tender'));
-            const svpTasks = activeTasks.filter(t => t.type === 'SVP');
-
-            KANBAN_STATUSES.forEach(status => {
-                itqContainer.appendChild(createKanbanColumn(status, itqTenderTasks));
-                svpContainer.appendChild(createKanbanColumn(status, svpTasks));
+        // Sync Skipped Toggle
+        const mobSkip = document.getElementById('mob-show-skipped-toggle');
+        const deskSkip = document.getElementById('show-skipped-toggle');
+        if(mobSkip && deskSkip) {
+            mobSkip.addEventListener('change', (e) => {
+                deskSkip.checked = e.target.checked;
+                refreshView();
+            });
+            deskSkip.addEventListener('change', (e) => {
+                mobSkip.checked = e.target.checked;
             });
         }
 
-        function createKanbanColumn(status, tasks) {
-            const col = document.createElement('div');
-            col.className = 'kanban-column bg-white rounded-2xl shadow-ios border border-gray-100 flex flex-col h-[600px] flex-shrink-0 snap-center';
+        // Close custom dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            // Mobile Sheet logic
+            if(e.target.closest('#mobile-filter-sheet') && !e.target.closest('button[id^="mob-filter-"]')) {
+                 ['mob-filter-type-list', 'mob-filter-ec-list', 'mob-filter-status-list'].forEach(lid => {
+                    document.getElementById(lid).classList.add('hidden');
+                });
+            }
             
-            const count = tasks.filter(t => t.status === status).length;
-            const headerBg = status === 'Skipped' ? 'bg-gray-200' : 'bg-gray-50';
-            
-            col.innerHTML = `
-                <div class="p-4 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center ${headerBg} rounded-t-2xl">
-                    <span class="text-sm uppercase tracking-wide">${status}</span>
-                    <span class="bg-white border border-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full font-bold">${count}</span>
-                </div>
-                <div class="kanban-column-content p-3 flex-grow overflow-y-auto space-y-3 bg-gray-50/30 custom-scrollbar transition-colors duration-200"
-                     data-status="${status}"
-                     ondragover="allowDrop(event)" 
-                     ondragleave="dragleave(event)"
-                     ondrop="drop(event, '${status}')">
-                </div>
-            `;
+            // Form Item Card Logic
+            if(!e.target.closest('button[onclick^="window.toggleGenericDropdown"]')) {
+                const dropListIds = ['form-type-list', 'form-brand-list', 'form-costing-list', 'form-status-list'];
+                dropListIds.forEach(id => {
+                    const list = document.getElementById(id);
+                    if(list && !list.classList.contains('hidden')) list.classList.add('hidden');
+                });
+            }
+        });
 
-            const list = col.querySelector('.kanban-column-content');
-            
-            const colTasks = tasks.filter(t => t.status === status).sort((a, b) => {
-                const dateA = new Date(a.closing_date || '9999-12-31');
-                const dateB = new Date(b.closing_date || '9999-12-31');
-                const today = new Date();
-                return (dateA - today) - (dateB - today);
-            });
 
-            colTasks.forEach(task => {
-                const ecName = task.assignment ? task.assignment.split(',')[0].trim() : 'default';
-                const headerColor = EC_BG_HEADER[ecName] || EC_BG_HEADER['default'];
-                
-                const card = document.createElement('div');
-                // Use default cursor for mobile, drag-grab for wide
-                card.className = `kanban-card bg-white rounded-xl shadow-sm border border-gray-100 cursor-grab hover:shadow-ios-hover transition-all transform hover:-translate-y-1 overflow-hidden select-none`;
-                
-                // Disable native drag on mobile based on width. We keep the attribute for desktop use.
-                card.setAttribute('draggable', window.innerWidth > 640 ? 'true' : 'false');
-                card.setAttribute('data-id', task.id);
-                
-                if (window.innerWidth > 640) {
-                    card.ondragstart = (event) => drag(event);
-                } else {
-                    // Touch events are attached globally to the body, no need to attach here
-                }
-                
-                const dateObj = new Date(task.closing_date);
-                const dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-                
-                // Appointment Logic
-                const apptDate = task.appointment ? new Date(task.appointment) : null;
-                const apptStr = apptDate ? apptDate.toLocaleDateString('en-GB', { weekday:'short', day: 'numeric', month: 'short' }) + ' @ ' + apptDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-
-                card.innerHTML = `
-                    <div class="kanban-card-header ${headerColor} text-white px-3 py-2 flex justify-between items-center cursor-pointer active:cursor-grabbing" onclick="window.openModalById('${task.id}')">
-                        <span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 py-0.5 rounded pointer-events-none">${task.type}</span>
-                        <span class="text-xs font-medium flex items-center gap-1 pointer-events-none">
-                             <svg class="w-3 h-3 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            ${dateStr}
-                        </span>
-                    </div>
-                    
-                    <div class="p-3">
-                        <h4 class="text-sm font-bold text-gray-800 leading-snug mb-1 line-clamp-2 cursor-pointer hover:text-primary" onclick="window.openModalById('${task.id}')">${task.school}</h4>
-                        <div class="text-xs text-gray-500 mb-2 line-clamp-1">${task.programme}</div>
-                        
-                        ${apptStr ? `
-                        <div class="text-[10px] text-ios_blue font-semibold mb-2 flex items-center gap-1 bg-blue-50 p-1 rounded w-fit">
-                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                             ${apptStr}
-                        </div>` : ''}
-                        
-                        <div class="flex justify-between items-center pt-2 border-t border-gray-50">
-                             <div class="flex gap-2">
-                                <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue transition p-1" title="Specifications" onclick="event.stopPropagation()">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                </a>
-                                <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent transition p-1" title="Working Folder" onclick="event.stopPropagation()">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-                                </a>
-                             </div>
-                            <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700 truncate max-w-[100px] pointer-events-none">${task.assignment ? task.assignment.split(',')[0] : 'Unassigned'}</span>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(card);
-            });
-
-            return col;
-        }
-
-        // --- RENDER TABLE ---
-        function getTaskBgColor(assignment) {
-             const ecName = assignment ? assignment.split(',')[0].trim() : 'default';
-            return EC_BG_COLORS[ecName] || EC_BG_COLORS['default'];
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('table-body');
+        // --- SEARCH & FILTER LOGIC ---
+        function filterTasks(tasks) {
+            const search = document.getElementById('table-search').value.toLowerCase();
             const fType = document.getElementById('filter-type').value;
             const fEC = document.getElementById('filter-ec').value;
             const fStatus = document.getElementById('filter-status').value;
             const showSkipped = document.getElementById('show-skipped-toggle').checked;
 
-            // updateECDropdown is called in initListeners/onSnapshot
-
-            let filtered = allTasks.filter(t => {
+            return tasks.filter(t => {
+                if (search) {
+                    const content = [
+                        t.school, t.programme, t.type, t.moe_code, t.assignment, 
+                        t.status, t.cost_val, t.notes
+                    ].join(' ').toLowerCase();
+                    if (!content.includes(search)) return false;
+                }
                 if (fType !== 'all' && t.type !== fType) return false;
                 if (fStatus === 'active' && t.status === 'Skipped') return false;
                 if (fStatus === 'Skipped' && t.status !== 'Skipped') return false;
@@ -1390,52 +1265,330 @@
                 }
                 return true;
             });
+        }
 
-            filtered.sort((a, b) => {
+        const refreshView = () => {
+             if(document.getElementById('kanban-view').classList.contains('hidden')) renderTable();
+             else renderKanban();
+        }
+        document.getElementById('table-search').addEventListener('input', refreshView);
+        document.getElementById('filter-type').addEventListener('change', refreshView);
+        document.getElementById('filter-ec').addEventListener('change', refreshView);
+        document.getElementById('filter-status').addEventListener('change', refreshView);
+        document.getElementById('show-skipped-toggle').addEventListener('change', refreshView);
+
+        // --- RENDERING ---
+        function renderKanban() {
+            const itqContainer = document.getElementById('kanban-area-itq');
+            const svpContainer = document.getElementById('kanban-area-svp');
+            itqContainer.innerHTML = '';
+            svpContainer.innerHTML = '';
+            
+            const filtered = filterTasks(allTasks);
+
+            KANBAN_STATUSES.forEach(status => {
+                const colTasks = filtered.filter(t => t.status === status).sort(dateSort);
+                const itqTasks = colTasks.filter(t => t.type !== 'SVP');
+                const svpTasks = colTasks.filter(t => t.type === 'SVP');
+                itqContainer.appendChild(createKanbanColumn(status, itqTasks));
+                svpContainer.appendChild(createKanbanColumn(status, svpTasks));
+            });
+        }
+
+        function dateSort(a, b) {
+            const dateA = new Date(a.closing_date || '9999-12-31');
+            const dateB = new Date(b.closing_date || '9999-12-31');
+            return dateA - dateB;
+        }
+
+        function createKanbanColumn(status, tasks) {
+            const col = document.createElement('div');
+            col.className = 'kanban-column bg-white rounded-2xl shadow-ios border border-gray-100 flex flex-col h-[600px] flex-shrink-0 snap-center';
+            const headerBg = status === 'Skipped' ? 'bg-gray-200' : 'bg-gray-50';
+            col.innerHTML = `
+                <div class="p-4 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center ${headerBg} rounded-t-2xl">
+                    <span class="text-sm uppercase tracking-wide">${status}</span>
+                    <span class="bg-white border border-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full font-bold">${tasks.length}</span>
+                </div>
+                <div class="kanban-column-content p-3 flex-grow overflow-y-auto space-y-3 bg-gray-50/30 custom-scrollbar transition-colors duration-200"
+                     data-status="${status}" ondragover="allowDrop(event)" ondragleave="dragleave(event)" ondrop="drop(event, '${status}')">
+                </div>
+            `;
+            const list = col.querySelector('.kanban-column-content');
+            tasks.forEach(task => list.appendChild(createKanbanCard(task)));
+            return col;
+        }
+
+        function createKanbanCard(task) {
+            const ecName = task.assignment ? task.assignment.split(',')[0].trim() : 'default';
+            const headerColor = EC_BG_HEADER[ecName] || EC_BG_HEADER['default'];
+            const card = document.createElement('div');
+            card.className = `kanban-card bg-white rounded-xl shadow-sm border border-gray-100 cursor-grab hover:shadow-ios-hover transition-all transform hover:-translate-y-1 overflow-hidden select-none relative`;
+            card.setAttribute('draggable', window.innerWidth > 640 ? 'true' : 'false');
+            card.setAttribute('data-id', task.id);
+            if(window.innerWidth > 640) card.ondragstart = (e) => drag(e);
+
+            const ps = getProgressState(task);
+            const segmentsHTML = PROGRESS_ITEMS.map((item, idx) => {
+                let activeClass = '';
+                if(idx < 6) { if (ps[item.id]) activeClass = ps.allFirstSix ? 'active-solid' : 'active-light'; } 
+                else { if (ps[item.id]) activeClass = ps.bothLastTwo ? 'active-solid' : 'active-light'; }
+                return `<div class="progress-segment ${activeClass}"></div>`;
+            }).join('');
+            
+            const moeDisplay = task.moe_code && task.moe_code.length >= 4 ? task.moe_code.slice(-4) : task.moe_code;
+
+            card.innerHTML = `
+                <div class="kanban-card-header ${headerColor} text-white px-3 py-2 flex justify-between items-center cursor-pointer active:cursor-grabbing" onclick="window.openModalById('${task.id}')">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 py-0.5 rounded pointer-events-none">${task.type}</span>
+                        ${moeDisplay ? `<span class="text-[10px] font-medium opacity-90 tracking-wide pointer-events-none border-l border-white/30 pl-2">${moeDisplay}</span>` : ''}
+                    </div>
+                    <span class="text-xs font-medium flex items-center gap-1 pointer-events-none">${formatDate(task.closing_date)}</span>
+                </div>
+                <div class="p-3">
+                    <h4 class="text-sm font-bold text-gray-800 leading-snug mb-1 line-clamp-2 cursor-pointer hover:text-primary" onclick="window.openModalById('${task.id}')">${task.school}</h4>
+                    <div class="text-xs text-gray-500 mb-3 line-clamp-1">${task.programme}</div>
+                    <div class="flex justify-between items-center pt-2 border-t border-gray-50 relative">
+                         <div class="flex gap-1 items-center">
+                            <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue transition p-1" title="Specifications" onclick="event.stopPropagation()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></a>
+                            <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent transition p-1" title="Working Folder" onclick="event.stopPropagation()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg></a>
+                            <button class="text-gray-400 hover:text-green-600 transition p-1" title="Progress" onclick="event.stopPropagation(); window.toggleProgress(event, '${task.id}')"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></button>
+                         </div>
+                        <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700 truncate max-w-[80px] pointer-events-none">${task.assignment ? task.assignment.split(',')[0] : 'Unassigned'}</span>
+                    </div>
+                    <div class="flex gap-0.5 mt-2 h-1 w-full opacity-80">
+                        ${segmentsHTML}
+                    </div>
+                </div>
+            `;
+            return card;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            const filtered = filterTasks(allTasks).sort((a,b) => {
                 if (a.status === 'In Progress' && b.status !== 'In Progress') return -1;
                 if (a.status !== 'In Progress' && b.status === 'In Progress') return 1;
-                const dateA = new Date(a.closing_date || '9999-12-31');
-                const dateB = new Date(b.closing_date || '9999-12-31');
-                return dateA - dateB;
+                return new Date(a.closing_date) - new Date(b.closing_date);
             });
 
-            tbody.innerHTML = '';
             filtered.forEach(task => {
-                const bgClass = getTaskBgColor(task.assignment);
+                const ec = task.assignment ? task.assignment.split(',')[0].trim() : 'default';
+                const bgClass = EC_BG_COLORS[ec] || EC_BG_COLORS['default'];
                 const tr = document.createElement('tr');
-                tr.className = `cursor-pointer border-b border-gray-100 ${bgClass} hover:brightness-95`;
-                tr.onclick = (e) => {
-                    if(!e.target.closest('button') && !e.target.closest('a')) openModal(task);
-                };
+                tr.className = `cursor-pointer border-b border-gray-100 ${bgClass} hover:brightness-95 transition-colors`;
+                tr.onclick = (e) => { if(!e.target.closest('button') && !e.target.closest('a')) window.openModalById(task.id); };
+                
+                const ps = getProgressState(task);
+                const segmentsHTML = PROGRESS_ITEMS.map((item, idx) => {
+                    let activeClass = '';
+                    if(idx < 6) { if (ps[item.id]) activeClass = ps.allFirstSix ? 'active-solid' : 'active-light'; } 
+                    else { if (ps[item.id]) activeClass = ps.bothLastTwo ? 'active-solid' : 'active-light'; }
+                    return `<div class="progress-segment ${activeClass}"></div>`;
+                }).join('');
+
+                const appointmentStr = task.appointment ? new Date(task.appointment).toLocaleString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
 
                 tr.innerHTML = `
                     <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700">${task.type}</td>
                     <td class="px-4 sm:px-6 py-4">
                         <div class="text-sm font-bold text-gray-900">${task.school}</div>
-                        <div class="text-xs text-gray-500">${task.programme}</div>
+                        <div class="text-xs text-gray-600 mt-0.5">${task.programme}</div>
+                        ${task.moe_code ? `<div class="text-xs text-gray-400 font-mono mt-0.5">${task.moe_code}</div>` : ''}
+                        ${appointmentStr ? `<div class="text-[10px] text-indigo-600 font-medium mt-1 bg-indigo-50 inline-block px-1 rounded">📅 ${appointmentStr}</div>` : ''}
                     </td>
-                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${task.closing_date}</td>
+                    <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">${formatDate(task.closing_date)}</td>
                     <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         <span class="bg-white border border-gray-200 px-2 py-1 rounded-md text-xs shadow-sm">${task.assignment || '-'}</span>
                     </td>
                     <td class="px-4 sm:px-6 py-4 whitespace-nowrap">
-                        <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-bold rounded-full 
-                        ${task.status === 'In Progress' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">
-                            ${task.status}
-                        </span>
+                        <div class="flex flex-col gap-1.5">
+                            <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-bold rounded-full w-fit ${task.status === 'In Progress' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}">${task.status}</span>
+                            <div class="flex gap-0.5 h-1 w-full max-w-[120px] opacity-80">${segmentsHTML}</div>
+                        </div>
                     </td>
                     <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">${task.costing_type || '-'}</td>
                     <td class="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex gap-4 justify-end items-center h-full">
-                        <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue transition" title="Specifications" onclick="event.stopPropagation()">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        </a>
-                        <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent transition" title="Working Folder" onclick="event.stopPropagation()">
-                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-                        </a>
-                        <button class="text-ios_blue hover:text-blue-700 font-semibold" onclick="event.stopPropagation(); window.openModalById('${task.id}')">Edit</button>
+                         <div class="flex gap-2">
+                             <a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue transition" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></a>
+                             <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent transition" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg></a>
+                             <button class="text-gray-400 hover:text-green-600 transition" onclick="event.stopPropagation(); window.toggleProgress(event, '${task.id}')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></button>
+                         </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
+            });
+        }
+
+        // --- PROGRESS POPOVER LOGIC ---
+        window.toggleProgress = (e, taskId) => {
+            const popover = document.getElementById('progress-popover');
+            const list = document.getElementById('progress-list');
+            
+            if (activePopoverTaskId === taskId && !popover.classList.contains('hidden')) {
+                window.closeProgressPopover();
+                return;
+            }
+
+            activePopoverTaskId = taskId;
+            const task = allTasks.find(t => t.id === taskId);
+            if(!task) return;
+
+            list.innerHTML = '';
+            PROGRESS_ITEMS.forEach(item => {
+                const row = document.createElement('label');
+                row.className = 'flex items-center space-x-3 cursor-pointer group';
+                let isChecked = task.progress?.[item.id] || false;
+                let isDisabled = false;
+                if (item.id === 'annex_b') {
+                    if (isAnnexBAutoChecked(task)) isChecked = true;
+                }
+                row.innerHTML = `
+                    <input type="checkbox" class="form-checkbox h-4 w-4 text-ios_blue rounded border-gray-300 focus:ring-ios_blue transition duration-150 ease-in-out" 
+                        onchange="window.updateProgress('${taskId}', '${item.id}', this.checked)"
+                        ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
+                    <span class="text-xs font-medium text-gray-700 group-hover:text-dark select-none">${item.label}</span>
+                    ${item.id === 'annex_b' && isAnnexBAutoChecked(task) ? '<span class="text-[10px] text-gray-400 ml-auto italic">(Auto)</span>' : ''}
+                `;
+                list.appendChild(row);
+            });
+
+            // Position Popover Smartly
+            const btn = e.currentTarget;
+            const rect = btn.getBoundingClientRect();
+            const popWidth = 288;
+            
+            popover.classList.remove('hidden');
+            popover.style.display = 'block';
+
+            const popHeight = popover.offsetHeight;
+            const viewportHeight = window.innerHeight;
+            const bottomSpace = viewportHeight - rect.bottom;
+
+            let top;
+            if (bottomSpace < popHeight + 20) {
+                top = rect.top + window.scrollY - popHeight - 5;
+            } else {
+                top = rect.bottom + window.scrollY + 5;
+            }
+
+            let left = (rect.left + rect.width / 2) - (popWidth / 2) + window.scrollX;
+            const viewportWidth = window.innerWidth;
+            if (left + popWidth > viewportWidth - 20) {
+                left = viewportWidth - popWidth - 20;
+            }
+            if (left < 20) {
+                left = 20;
+            }
+
+            popover.style.width = '18rem'; 
+            if(window.innerWidth < 640) {
+                popover.style.width = 'calc(100% - 40px)';
+                left = 20;
+            }
+
+            popover.style.top = `${top}px`;
+            popover.style.left = `${left}px`;
+
+            document.addEventListener('click', closePopoverOnClickOutside);
+        };
+
+        function closePopoverOnClickOutside(e) {
+            const popover = document.getElementById('progress-popover');
+            if (!popover.contains(e.target) && !e.target.closest('button[title="Progress"]')) {
+                window.closeProgressPopover();
+            }
+        }
+
+        window.closeProgressPopover = () => {
+            const popover = document.getElementById('progress-popover');
+            popover.classList.add('hidden');
+            popover.style.display = 'none';
+            activePopoverTaskId = null;
+            document.removeEventListener('click', closePopoverOnClickOutside);
+        };
+
+        window.updateProgress = async (taskId, itemId, checked) => {
+            const taskRef = doc(getTaskCollectionRef(), taskId);
+            const task = allTasks.find(t => t.id === taskId);
+            const newProgress = { ...(task.progress || {}) };
+            newProgress[itemId] = checked;
+            await updateDoc(taskRef, { progress: newProgress });
+        };
+
+        // --- CSV IMPORT / EXPORT (FULL FIELDS) ---
+        document.getElementById('export-btn').addEventListener('click', () => {
+            const headers = [
+                'Type', 'MOE Code', 'School', 'Programme', 'Closing Date', 'Assignment', 'Brand', 
+                'Status', 'Cost Val', 'Cost Specs', 'Costing Type', 'Specs Link', 'Folder Link', 
+                'Trainers', 'Notes', 'Appointment', 
+                'Contact1 Name', 'Contact1 Email', 'Contact1 Cont',
+                'Contact2 Name', 'Contact2 Email', 'Contact2 Cont',
+                'Contact3 Name', 'Contact3 Email', 'Contact3 Cont'
+            ];
+            
+            const rows = allTasks.map(t => {
+                const c1 = t.contact1 || {};
+                const c2 = t.contact2 || {};
+                const c3 = t.contact3 || {};
+                return [
+                    t.type, t.moe_code || '', t.school, t.programme, t.closing_date, t.assignment || '', t.brand || '',
+                    t.status, t.cost_val || '', t.cost_specs || '', t.costing_type || '', t.specs, t.folder,
+                    t.trainers || '', t.notes || '', t.appointment || '',
+                    c1.name||'', c1.email||'', c1.cont||'',
+                    c2.name||'', c2.email||'', c2.cont||'',
+                    c3.name||'', c3.email||'', c3.cont||''
+                ];
+            });
+            
+            const csvContent = [headers.join(','), ...rows.map(e => e.map(i => `"${String(i).replace(/"/g, '""')}"`).join(','))].join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Checklist_FullExport_${new Date().toISOString().slice(0,10)}.csv`;
+            link.click();
+        });
+
+        document.getElementById('import-trigger-btn').addEventListener('click', () => document.getElementById('import-file').click());
+        document.getElementById('import-file').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                const text = evt.target.result;
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+                // Simple CSV parse
+                for(let i=1; i<lines.length; i++) {
+                    const cols = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g).map(c => c.replace(/^"|"$/g, '').replace(/""/g, '"'));
+                    if(cols.length < 5) continue; 
+                    
+                    const newData = {
+                        type: cols[0] || 'ITQ', moe_code: cols[1] || '', school: cols[2], programme: cols[3], closing_date: cols[4],
+                        assignment: cols[5] || '', brand: cols[6] || '', status: cols[7] || 'In Progress',
+                        cost_val: cols[8] || '', cost_specs: cols[9] || '', costing_type: cols[10] || '',
+                        specs: cols[11] || '', folder: cols[12] || '', trainers: cols[13] || '', notes: cols[14] || '', appointment: cols[15] || '',
+                        contact1: { name: cols[16]||'', email: cols[17]||'', cont: cols[18]||'' },
+                        contact2: { name: cols[19]||'', email: cols[20]||'', cont: cols[21]||'' },
+                        contact3: { name: cols[22]||'', email: cols[23]||'', cont: cols[24]||'' },
+                        createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+                    };
+                    try { await addDoc(getTaskCollectionRef(), newData); } catch(err) { console.error(err); }
+                }
+                alert('Import complete.');
+            };
+            reader.readAsText(file);
+        });
+
+
+        // --- GENERIC UI ---
+        function populateSchoolDatalist() {
+            const datalist = document.getElementById('school-list');
+            window.SCHOOL_DATA.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.school;
+                datalist.appendChild(opt);
             });
         }
         
@@ -1444,113 +1597,203 @@
             if(task) openModal(task);
         }
 
-        function updateECDropdown(currentVal) {
-            const select = document.getElementById('filter-ec');
-            if (!currentVal) currentVal = select.value;
-            
-            const uniqueECs = new Set();
-            allTasks.forEach(t => {
-                if (t.assignment) uniqueECs.add(t.assignment.split(',')[0].trim());
-            });
-            
-            while (select.options.length > 1) {
-                select.remove(1);
-            }
+        // --- FORM & MODAL LOGIC (Mostly same as before) ---
+        const form = document.getElementById('task-form');
+        const modal = document.getElementById('modal-overlay');
 
-            Array.from(uniqueECs).sort().forEach(ec => {
-                const opt = document.createElement('option');
-                opt.value = ec;
-                opt.textContent = ec;
-                select.appendChild(opt);
-            });
-            
-            if (currentVal && currentVal !== 'all') select.value = currentVal;
-            else select.value = 'all'; // Default to 'All Consultants'
-        }
-
-        document.getElementById('filter-type').addEventListener('change', renderTable);
-        document.getElementById('filter-ec').addEventListener('change', renderTable);
-        document.getElementById('filter-status').addEventListener('change', renderTable);
-        document.getElementById('show-skipped-toggle').addEventListener('change', renderTable);
-
-        // --- MODAL CONTROLS ---
         function openModal(task = null) {
             editingTaskId = task ? task.id : null;
             form.reset();
+            document.getElementById('delete-btn').classList.toggle('hidden', !task);
+            document.getElementById('modal-title').textContent = task ? 'Edit Task' : 'New Task';
             
+            // Set Custom Dropdown Initial States
+            const type = task ? (task.type || 'ITQ') : 'ITQ';
+            window.selectGenericOption(null, 'f_type', 'form-type-label', 'form-type-list', type);
+
+            const brand = task ? (task.brand || '') : '';
+            window.selectGenericOption(null, 'f_brand', 'form-brand-label', 'form-brand-list', brand || 'Select Brand...');
+
+            const costing = task ? (task.costing_type || '') : '';
+            window.selectGenericOption(null, 'f_costing_type', 'form-costing-label', 'form-costing-list', costing || 'Select Type...');
+
+            const status = task ? (task.status || 'In Progress') : 'In Progress';
+            window.selectGenericOption(null, 'f_status', 'form-status-label', 'form-status-list', status);
+
+
             if (task) {
-                document.getElementById('modal-title').textContent = 'Edit Task';
-                document.getElementById('delete-btn').classList.remove('hidden');
+                // Populate fields (Same ID mappings as HTML)
+                ['moe_code', 'closing_date', 'school', 'assignment', 'programme', 'specs', 'folder', 'cost_specs', 'cost_val', 'trainers', 'notes', 'appointment'].forEach(f => {
+                    const el = document.getElementById(`f_${f}`);
+                    if(el) el.value = task[f] || '';
+                });
                 
-                document.getElementById('f_type').value = task.type || 'ITQ';
-                document.getElementById('f_moe_code').value = task.moe_code || '';
-                document.getElementById('f_closing_date').value = task.closing_date || '';
-                document.getElementById('f_school').value = task.school || '';
-                document.getElementById('f_assignment').value = task.assignment || '';
-                document.getElementById('f_programme').value = task.programme || '';
-                document.getElementById('f_brand').value = task.brand || '';
-                document.getElementById('f_specs').value = task.specs || '';
-                document.getElementById('f_folder').value = task.folder || '';
-                document.getElementById('f_costing_type').value = task.costing_type || '';
-                document.getElementById('f_cost_specs').value = task.cost_specs || '';
-                document.getElementById('f_cost_val').value = task.cost_val || '';
-                document.getElementById('f_trainers').value = task.trainers || '';
-                document.getElementById('f_notes').value = task.notes || '';
-                document.getElementById('f_appointment').value = task.appointment || '';
-                document.getElementById('f_status').value = task.status || 'In Progress';
-
-                if (task.contact1) {
-                    document.getElementById('f_c1_name').value = task.contact1.name || '';
-                    document.getElementById('f_c1_des').value = task.contact1.des || '';
-                    document.getElementById('f_c1_dept').value = task.contact1.dept || '';
-                    document.getElementById('f_c1_cont').value = task.contact1.cont || '';
-                    document.getElementById('f_c1_email').value = task.contact1.email || '';
-                }
-                if (task.contact2) {
-                    document.getElementById('f_c2_name').value = task.contact2.name || '';
-                    document.getElementById('f_c2_des').value = task.contact2.des || '';
-                    document.getElementById('f_c2_dept').value = task.contact2.dept || '';
-                    document.getElementById('f_c2_cont').value = task.contact2.cont || '';
-                    document.getElementById('f_c2_email').value = task.contact2.email || '';
-                }
-                if (task.contact3) {
-                    document.getElementById('f_c3_name').value = task.contact3.name || '';
-                    document.getElementById('f_c3_des').value = task.contact3.des || '';
-                    document.getElementById('f_c3_dept').value = task.contact3.dept || '';
-                    document.getElementById('f_c3_cont').value = task.contact3.cont || '';
-                    document.getElementById('f_c3_email').value = task.contact3.email || '';
-                }
-
-                document.getElementById('f_type').dispatchEvent(new Event('change'));
-                document.getElementById('f_costing_type').dispatchEvent(new Event('change'));
-
-            } else {
-                document.getElementById('modal-title').textContent = 'New Task';
-                document.getElementById('delete-btn').classList.add('hidden');
-                document.getElementById('f_type').dispatchEvent(new Event('change'));
-                document.getElementById('f_costing_type').dispatchEvent(new Event('change'));
+                // Nested contacts
+                ['1','2','3'].forEach(n => {
+                    const c = task[`contact${n}`];
+                    if(c) {
+                        ['name', 'des', 'dept', 'cont', 'email'].forEach(k => {
+                           const el = document.getElementById(`f_c${n}_${k}`);
+                           if(el) el.value = c[k] || ''; 
+                        });
+                    }
+                });
             }
-
+            // Trigger logic updates (generic function handles dispatchEvent)
             modal.classList.remove('hidden');
         }
 
-        function closeModal() {
-            modal.classList.add('hidden');
-            editingTaskId = null;
+        // Generic Form Dropdown Logic
+        window.toggleGenericDropdown = (e, listId) => {
+            e.preventDefault();
+            e.stopPropagation(); // Stop bubbling
+            
+            // Close others first
+            const dropListIds = ['form-type-list', 'form-brand-list', 'form-costing-list', 'form-status-list'];
+            dropListIds.forEach(id => {
+                if(id !== listId) document.getElementById(id).classList.add('hidden');
+            });
+
+            const list = document.getElementById(listId);
+            const btn = e.currentTarget;
+            
+            if(list.classList.contains('hidden')) {
+                list.classList.remove('hidden');
+                
+                // Positioning Logic (Up or Down)
+                const rect = btn.getBoundingClientRect();
+                const spaceBelow = window.innerHeight - rect.bottom;
+                
+                // If modal is scrolling, this is relative to viewport. 
+                // 220px threshold for dropdown height
+                if(spaceBelow < 220) {
+                    list.classList.add('bottom-full', 'mb-1');
+                    list.classList.remove('mt-1');
+                } else {
+                    list.classList.remove('bottom-full', 'mb-1');
+                    list.classList.add('mt-1');
+                }
+            } else {
+                list.classList.add('hidden');
+            }
+        }
+        window.selectGenericOption = (e, selectId, labelId, listId, val) => {
+            if(e) {
+                e.preventDefault(); // Add preventDefault
+                e.stopPropagation();
+            }
+            const select = document.getElementById(selectId);
+            const label = document.getElementById(labelId);
+            const list = document.getElementById(listId);
+            
+            select.value = val;
+            label.textContent = val;
+            
+            // Force hide immediately
+            list.classList.add('hidden');
+            
+            // Trigger change event manually for logic listeners
+            select.dispatchEvent(new Event('change')); 
         }
 
+        // Save
+        document.getElementById('save-btn').addEventListener('click', async () => {
+             if(!form.checkValidity()) { form.reportValidity(); return; }
+             
+             const getData = (id) => document.getElementById(id).value;
+             const formData = {
+                 type: getData('f_type'), moe_code: getData('f_moe_code'), closing_date: getData('f_closing_date'),
+                 school: getData('f_school'), assignment: getData('f_assignment'), programme: getData('f_programme'),
+                 brand: getData('f_brand'), specs: getData('f_specs'), folder: getData('f_folder'),
+                 costing_type: getData('f_costing_type'), cost_specs: getData('f_cost_specs'), cost_val: getData('f_cost_val'),
+                 trainers: getData('f_trainers'), notes: getData('f_notes'), appointment: getData('f_appointment'), status: getData('f_status'),
+                 updatedAt: serverTimestamp()
+             };
+             
+             // Add contact objs
+             ['1','2','3'].forEach(n => {
+                 formData[`contact${n}`] = {
+                     name: getData(`f_c${n}_name`),
+                     des: getData(`f_c${n}_des`),
+                     dept: getData(`f_c${n}_dept`),
+                     cont: getData(`f_c${n}_cont`),
+                     email: getData(`f_c${n}_email`)
+                 };
+             });
+             
+             try {
+                if(editingTaskId) await updateDoc(doc(getTaskCollectionRef(), editingTaskId), formData);
+                else { formData.createdAt = serverTimestamp(); await addDoc(getTaskCollectionRef(), formData); }
+                modal.classList.add('hidden');
+             } catch(e) { console.error(e); alert('Error saving'); }
+        });
+
+        // Delete
+        document.getElementById('delete-btn').addEventListener('click', async () => {
+            if(editingTaskId && confirm("Delete?")) {
+                await deleteDoc(doc(getTaskCollectionRef(), editingTaskId));
+                modal.classList.add('hidden');
+            }
+        });
+
+        // UI Event Listeners (Close modal, switch views etc)
+        document.getElementById('close-modal-btn').addEventListener('click', () => modal.classList.add('hidden'));
+        document.getElementById('cancel-btn').addEventListener('click', () => modal.classList.add('hidden'));
+        document.getElementById('view-kanban').addEventListener('click', () => toggleView('kanban'));
+        document.getElementById('view-table').addEventListener('click', () => toggleView('table'));
         document.getElementById('add-task-btn').addEventListener('click', () => openModal(null));
-        document.getElementById('close-modal-btn').addEventListener('click', closeModal);
-        document.getElementById('cancel-btn').addEventListener('click', closeModal);
-        document.getElementById('save-btn').addEventListener('click', saveTask);
-        document.getElementById('delete-btn').addEventListener('click', deleteTask);
+
+        function toggleView(view) {
+            const kb = document.getElementById('kanban-view');
+            const tb = document.getElementById('table-view');
+            const tl = document.getElementById('toolbar');
+            const kt = document.getElementById('kanban-toolbar');
+            const btnK = document.getElementById('view-kanban');
+            const btnT = document.getElementById('view-table');
+
+            if(view === 'kanban') {
+                kb.classList.remove('hidden'); tb.classList.add('hidden');
+                tl.classList.add('hidden'); kt.classList.remove('hidden');
+                btnK.classList.add('bg-white', 'shadow-sm', 'font-semibold', 'text-dark'); btnK.classList.remove('text-gray-500');
+                btnT.classList.remove('bg-white', 'shadow-sm', 'font-semibold', 'text-dark'); btnT.classList.add('text-gray-500');
+                renderKanban();
+            } else {
+                kb.classList.add('hidden'); tb.classList.remove('hidden');
+                tl.classList.remove('hidden'); kt.classList.add('hidden');
+                btnT.classList.add('bg-white', 'shadow-sm', 'font-semibold', 'text-dark'); btnT.classList.remove('text-gray-500');
+                btnK.classList.remove('bg-white', 'shadow-sm', 'font-semibold', 'text-dark'); btnK.classList.add('text-gray-500');
+                renderTable();
+            }
+        }
         
-        // --- ADD TOUCH EVENT LISTENERS ---
-        document.body.addEventListener('touchmove', handleTouchMove, {passive: false});
-        document.body.addEventListener('touchend', handleTouchEnd);
-        document.body.addEventListener('touchstart', handleTouchStart, {passive: false});
+        // Auto-fill assignment based on school
+        document.getElementById('f_school').addEventListener('change', (e) => {
+            const selected = window.SCHOOL_DATA.find(s => s.school === e.target.value);
+            document.getElementById('f_assignment').value = selected ? `${selected.consultant}, ${selected.zone}` : '';
+        });
 
+        // Logic toggles for fields
+        document.getElementById('f_type').addEventListener('change', (e) => {
+             const t = e.target.value;
+             const moe = document.getElementById('f_moe_code');
+             const star = document.getElementById('moe-star');
+             if(t === 'SVP') { moe.removeAttribute('required'); star.classList.add('hidden'); }
+             else { moe.setAttribute('required','true'); star.classList.remove('hidden'); }
+        });
+        document.getElementById('f_costing_type').addEventListener('change', (e) => {
+            document.getElementById('costing-details').classList.toggle('hidden', !e.target.value);
+        });
 
+        // Drag Drop (Keep standard logic)
+        window.allowDrop = (e) => e.preventDefault();
+        window.drag = (e) => { e.dataTransfer.setData("text", e.target.getAttribute('data-id')); };
+        window.drop = async (e, status) => {
+            e.preventDefault();
+            const id = e.dataTransfer.getData("text");
+            if(id) await updateDoc(doc(getTaskCollectionRef(), id), { status });
+        }
+
+        // Start
         initApp();
     </script>
 </body>
