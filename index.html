@@ -59,7 +59,7 @@
         }
 
         /* iOS-style Scrollbar */
-        ::-webkit-scrollbar { width: 0px; background: transparent; } /* Hidden scrollbar for cleaner look */
+        ::-webkit-scrollbar { width: 0px; background: transparent; } 
         
         .kanban-column { min-width: 300px; }
 
@@ -377,7 +377,12 @@
 
                     <div class="md:col-span-2 bg-gray-50/80 p-5 rounded-2xl border border-gray-200">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Trainers</span><input type="text" id="f_trainers" class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue"></label>
+                            <!-- TRAINERS FIELD: Auto Numbering -->
+                            <label class="block">
+                                <span class="text-xs font-semibold text-gray-600 ml-1">Trainers</span>
+                                <textarea id="f_trainers" rows="3" placeholder="1. Name..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue"></textarea>
+                            </label>
+                            
                             <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Costing Type <span class="text-red-500">*</span></span>
                                 <div class="ios-select-wrapper mt-1">
                                     <select id="f_costing_type" required class="w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue">
@@ -988,6 +993,32 @@
                 details.classList.add('hidden');
             }
         });
+        
+        // Auto Numbering Logic
+        const trainerInput = document.getElementById('f_trainers');
+        
+        // Add 1. on focus if empty
+        trainerInput.addEventListener('focus', () => {
+            if(!trainerInput.value.trim()) {
+                trainerInput.value = "1. ";
+            }
+        });
+        
+        // Handle Enter key
+        trainerInput.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter') {
+                e.preventDefault(); // Stop default newline
+                
+                const lines = trainerInput.value.split('\n');
+                const nextNum = lines.length + 1;
+                
+                // Append newline and next number
+                trainerInput.value += `\n${nextNum}. `;
+                
+                // Auto scroll to bottom
+                trainerInput.scrollTop = trainerInput.scrollHeight;
+            }
+        });
 
         // --- FIRESTORE LISTENERS ---
         function initListeners() {
@@ -1291,6 +1322,10 @@
                 const dateObj = new Date(task.closing_date);
                 const dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
                 
+                // Appointment Logic
+                const apptDate = task.appointment ? new Date(task.appointment) : null;
+                const apptStr = apptDate ? apptDate.toLocaleDateString('en-GB', { weekday:'short', day: 'numeric', month: 'short' }) + ' @ ' + apptDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+
                 card.innerHTML = `
                     <div class="kanban-card-header ${headerColor} text-white px-3 py-2 flex justify-between items-center cursor-pointer active:cursor-grabbing" onclick="window.openModalById('${task.id}')">
                         <span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 py-0.5 rounded pointer-events-none">${task.type}</span>
@@ -1302,7 +1337,13 @@
                     
                     <div class="p-3">
                         <h4 class="text-sm font-bold text-gray-800 leading-snug mb-1 line-clamp-2 cursor-pointer hover:text-primary" onclick="window.openModalById('${task.id}')">${task.school}</h4>
-                        <div class="text-xs text-gray-500 mb-3 line-clamp-1">${task.programme}</div>
+                        <div class="text-xs text-gray-500 mb-2 line-clamp-1">${task.programme}</div>
+                        
+                        ${apptStr ? `
+                        <div class="text-[10px] text-ios_blue font-semibold mb-2 flex items-center gap-1 bg-blue-50 p-1 rounded w-fit">
+                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                             ${apptStr}
+                        </div>` : ''}
                         
                         <div class="flex justify-between items-center pt-2 border-t border-gray-50">
                              <div class="flex gap-2">
@@ -1405,7 +1446,6 @@
 
         function updateECDropdown(currentVal) {
             const select = document.getElementById('filter-ec');
-            // If currentVal wasn't passed (initial load), try to keep existing value
             if (!currentVal) currentVal = select.value;
             
             const uniqueECs = new Set();
@@ -1413,7 +1453,6 @@
                 if (t.assignment) uniqueECs.add(t.assignment.split(',')[0].trim());
             });
             
-            // Rebuild options but keep value
             while (select.options.length > 1) {
                 select.remove(1);
             }
@@ -1425,7 +1464,6 @@
                 select.appendChild(opt);
             });
             
-            // Ensure value is set
             if (currentVal && currentVal !== 'all') select.value = currentVal;
             else select.value = 'all'; // Default to 'All Consultants'
         }
