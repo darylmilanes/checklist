@@ -9,176 +9,259 @@
         tailwind.config = {
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: [
+                            '-apple-system', 
+                            'BlinkMacSystemFont', 
+                            '"Segoe UI"', 
+                            'Roboto', 
+                            'Helvetica', 
+                            'Arial', 
+                            'sans-serif'
+                        ],
+                    },
                     colors: {
-                        primary: '#004080',
-                        background: '#fafeff',
-                        dark: '#474747',
-                        accent: '#FFC400', 
-                        // EC Colors (Backgrounds for headers)
-                        ec_sarah: '#a855f7', 
-                        ec_martin: '#3b82f6', 
-                        ec_krystle: '#ec4899', 
-                        ec_charlynn: '#10b981', 
-                        ec_sapnaa: '#6b7280', 
-                        ec_yuniza: '#eab308', 
+                        // iOS System Colors
+                        ios_bg: '#F2F2F7',
+                        ios_card: '#FFFFFF',
+                        ios_blue: '#007AFF',
+                        ios_gray: '#8E8E93',
+                        ios_separator: '#C6C6C8',
+                        
+                        // Your Brand Colors (Adapted)
+                        primary: '#004080', // Deep Blue
+                        dark: '#1C1C1E',    // Apple Dark Gray
+                        accent: '#FF9F0A',  // Apple System Orange/Gold
+                        
+                        // EC Colors (Pastels for iOS vibe)
+                        ec_sarah: '#AF52DE', // System Purple
+                        ec_martin: '#007AFF', // System Blue
+                        ec_krystle: '#FF2D55', // System Pink
+                        ec_charlynn: '#34C759', // System Green
+                        ec_sapnaa: '#8E8E93', // System Gray
+                        ec_yuniza: '#FFCC00', // System Yellow
+                    },
+                    boxShadow: {
+                        'ios': '0 4px 20px rgba(0, 0, 0, 0.05)',
+                        'ios-hover': '0 10px 25px rgba(0, 0, 0, 0.1)',
                     }
                 }
             }
         }
     </script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #fafeff;
-            color: #474747;
+            background-color: #F2F2F7; /* iOS Grouped Background */
+            color: #1C1C1E;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             overscroll-behavior-y: none; 
         }
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        .kanban-column { min-width: 280px; }
 
-        /* Mobile Optimization Rules */
-        @media (max-width: 640px) {
-            .kanban-column { min-width: 85vw; height: 70vh; }
-            #main-content { padding: 0.5rem !important; }
-            h1 { font-size: 1.25rem !important; }
-            .view-btn-text { display: none; }
-            .view-btn-icon { display: block; }
-            #toolbar { padding-left: 1rem; padding-right: 1rem; }
+        /* iOS-style Scrollbar */
+        ::-webkit-scrollbar { width: 0px; background: transparent; } /* Hidden scrollbar for cleaner look */
+        
+        .kanban-column { min-width: 300px; }
+
+        /* Glassmorphism Utilities */
+        .glass {
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
         }
-        @media (min-width: 641px) { .view-btn-icon { display: none; } }
+
+        /* iOS Form Elements */
+        select, input, textarea {
+            appearance: none;
+            -webkit-appearance: none;
+            background-color: #FFFFFF;
+            border: 1px solid #E5E5EA; /* iOS Separator colorish */
+            transition: all 0.2s ease;
+        }
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: #007AFF;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+        }
+        
+        /* Custom Select Arrow */
+        .ios-select-wrapper {
+            position: relative;
+        }
+        .ios-select-wrapper::after {
+            content: "▼";
+            font-size: 0.6rem;
+            color: #8E8E93;
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        /* Mobile Optimization */
+        @media (max-width: 640px) {
+            .kanban-column { min-width: 88vw; height: 72vh; }
+            #main-content { padding: 0.5rem !important; }
+            h1 { font-size: 1.5rem !important; }
+            
+            /* Disable drag cursor on mobile */
+            .kanban-card { cursor: default !important; }
+            .kanban-card-header { cursor: pointer !important; } 
+            
+            /* Toolbar horizontal scroll */
+            #toolbar {
+                padding: 0.75rem 1rem;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
 
         /* Drag and Drop Styles */
-        .kanban-card.dragging { opacity: 0.5; cursor: grabbing; }
-        .kanban-column-content.drag-over { background-color: #e2e8f0; border: 2px dashed #94a3b8; }
-        .touch-drag-ghost { position: fixed; pointer-events: none; z-index: 1000; opacity: 0.9; transform: scale(1.05); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+        .kanban-card.dragging { opacity: 0.5; cursor: grabbing; transform: scale(1.02); }
+        .kanban-column-content.drag-over { background-color: rgba(0, 122, 255, 0.05); border-radius: 12px; box-shadow: inset 0 0 0 2px #007AFF; }
+        .touch-drag-ghost { position: fixed; pointer-events: none; z-index: 1000; opacity: 0.9; transform: scale(1.05); box-shadow: 0 15px 30px rgba(0,0,0,0.2); border-radius: 16px; }
 
         /* Loading overlay */
         #loading-overlay {
-            position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 50;
+            position: fixed; inset: 0; background: rgba(242, 242, 247, 0.95); z-index: 50;
             display: flex; justify-content: center; align-items: center; flex-direction: column;
             transition: opacity 0.3s;
         }
+        
+        /* Table Row Hover Animation */
+        tr { transition: background-color 0.15s ease; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
     <!-- Loading Screen -->
     <div id="loading-overlay">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-        <h2 class="text-xl font-bold text-primary">CheckList</h2>
-        <p class="text-sm text-gray-500">Connecting to shared database...</p>
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-ios_blue mb-4"></div>
+        <h2 class="text-lg font-semibold text-dark tracking-tight">CheckList</h2>
+        <p class="text-xs text-gray-400 font-medium mt-2">Connecting...</p>
     </div>
 
-    <!-- Navbar -->
-    <header class="bg-primary text-white shadow-md flex-none z-20">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
-            <div class="flex items-center gap-2 sm:gap-4">
-                <h1 class="text-2xl font-bold tracking-tight">CheckList</h1>
-                <div class="h-6 w-px bg-blue-400 mx-2 hidden sm:block"></div>
-                <div class="flex bg-blue-900 rounded-lg p-1">
-                    <button id="view-kanban" class="px-3 sm:px-4 py-1.5 rounded-md text-sm font-medium transition-colors bg-white text-primary shadow-sm flex items-center gap-2">
-                        <svg class="w-5 h-5 view-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                        <span class="view-btn-text">Kanban</span>
+    <!-- Navbar (Glassmorphism) -->
+    <header class="glass border-b border-gray-200/50 shadow-sm flex-none z-20 sticky top-0">
+        <div class="px-4 sm:px-6 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3 sm:gap-5">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg shadow-sm flex items-center justify-center text-white font-bold text-sm">CL</div>
+                    <h1 class="text-xl font-bold tracking-tight text-dark hidden sm:block">CheckList</h1>
+                </div>
+                
+                <!-- View Toggles (iOS Segmented Control Style) -->
+                <div class="flex bg-gray-200/80 p-1 rounded-lg">
+                    <button id="view-kanban" class="px-3 sm:px-4 py-1 rounded-[6px] text-xs font-semibold transition-all shadow-sm bg-white text-dark">
+                        <span class="hidden sm:inline">Kanban</span>
+                        <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
                     </button>
-                    <button id="view-table" class="px-3 sm:px-4 py-1.5 rounded-md text-sm font-medium text-blue-200 hover:text-white transition-colors flex items-center gap-2">
-                        <svg class="w-5 h-5 view-btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
-                        <span class="view-btn-text">Table</span>
+                    <button id="view-table" class="px-3 sm:px-4 py-1 rounded-[6px] text-xs font-medium text-gray-500 hover:text-dark transition-all">
+                        <span class="hidden sm:inline">Table</span>
+                        <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
                     </button>
                 </div>
             </div>
-            <div class="flex items-center gap-4 text-sm">
-                <div id="auth-status" class="opacity-80 font-mono text-xs flex items-center gap-2">
-                    <span class="w-2 h-2 bg-green-400 rounded-full"></span> <span class="hidden sm:inline">Shared Access</span>
+            <div class="flex items-center gap-3">
+                <div id="auth-status" class="px-2 py-1 bg-green-100 border border-green-200 rounded-full text-[10px] font-semibold text-green-700 flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Shared
                 </div>
             </div>
         </div>
         
         <!-- Toolbar (Filters) -->
-        <div id="toolbar" class="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 flex gap-2 sm:gap-4 items-center hidden overflow-x-auto whitespace-nowrap scrollbar-hide">
+        <div id="toolbar" class="px-4 sm:px-6 py-2 flex gap-3 items-center hidden overflow-x-auto whitespace-nowrap scrollbar-hide border-t border-gray-100">
+            <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:inline mr-1">Filter By:</span>
             
-            <select id="filter-type" class="border border-gray-300 rounded text-sm px-2 py-1.5 focus:ring-2 focus:ring-primary focus:outline-none bg-white">
-                <option value="all">All Types</option>
-                <option value="ITQ">ITQ</option>
-                <option value="Tender">Tender</option>
-                <option value="SVP">SVP</option>
-            </select>
+            <div class="ios-select-wrapper">
+                <select id="filter-type" class="rounded-lg text-xs px-3 py-1.5 pr-8 font-medium focus:ring-2 focus:ring-ios_blue focus:border-transparent cursor-pointer">
+                    <option value="all" selected>All Types</option>
+                    <option value="ITQ">ITQ</option>
+                    <option value="Tender">Tender</option>
+                    <option value="SVP">SVP</option>
+                </select>
+            </div>
 
-            <select id="filter-ec" class="border border-gray-300 rounded text-sm px-2 py-1.5 focus:ring-2 focus:ring-primary focus:outline-none bg-white">
-                <option value="all">All Consultants</option>
-            </select>
+            <div class="ios-select-wrapper">
+                <select id="filter-ec" class="rounded-lg text-xs px-3 py-1.5 pr-8 font-medium focus:ring-2 focus:ring-ios_blue focus:border-transparent cursor-pointer">
+                    <option value="all" selected>All Consultants</option>
+                </select>
+            </div>
 
-            <select id="filter-status" class="border border-gray-300 rounded text-sm px-2 py-1.5 focus:ring-2 focus:ring-primary focus:outline-none bg-white">
-                <option value="active">Active (Hide Skipped)</option>
-                <option value="all">Show All</option>
-                <option value="Skipped">Skipped Only</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Pending Award">Pending Award</option>
-                <option value="Awarded">Awarded</option>
-                <option value="Not Awarded">Not Awarded</option>
-                <option value="No Award">No Award</option>
-            </select>
+            <div class="ios-select-wrapper">
+                <select id="filter-status" class="rounded-lg text-xs px-3 py-1.5 pr-8 font-medium focus:ring-2 focus:ring-ios_blue focus:border-transparent cursor-pointer">
+                    <option value="active" selected>Active Tasks</option>
+                    <option value="all">Show All</option>
+                    <option value="Skipped">Skipped</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Pending Award">Pending Award</option>
+                    <option value="Awarded">Awarded</option>
+                    <option value="Not Awarded">Not Awarded</option>
+                    <option value="No Award">No Award</option>
+                </select>
+            </div>
             
-            <label class="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer ml-auto border-l pl-4 shrink-0">
-                <input type="checkbox" id="show-skipped-toggle" class="form-checkbox text-primary rounded">
+            <label class="flex items-center space-x-2 text-xs text-gray-500 cursor-pointer ml-auto border-l border-gray-200 pl-4 shrink-0 hover:text-dark transition">
+                <input type="checkbox" id="show-skipped-toggle" class="rounded border-gray-300 text-ios_blue focus:ring-ios_blue">
                 <span>Show Skipped</span>
             </label>
         </div>
         
         <!-- Kanban Toolbar -->
-        <div id="kanban-toolbar" class="bg-gray-50 border-b border-gray-200 px-4 sm:px-6 py-2 flex justify-between sm:justify-end items-center">
-             <span class="text-[10px] sm:text-xs text-gray-400 italic">Mobile: Drag colored header to move</span>
+        <div id="kanban-toolbar" class="px-4 sm:px-6 py-2 flex justify-between sm:justify-end items-center border-t border-gray-100">
+             <span class="text-[10px] sm:text-xs text-gray-400 font-medium hidden sm:inline">Drag cards to update status</span>
+             <span class="text-[10px] sm:text-xs text-gray-400 font-medium sm:hidden flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                Tap card to edit
+             </span>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main id="main-content" class="flex-grow overflow-auto p-4 sm:p-6 relative bg-[#fafeff]">
+    <main id="main-content" class="flex-grow overflow-auto p-4 sm:p-6 relative">
         
         <!-- Kanban View -->
-        <div id="kanban-view" class="space-y-8 sm:space-y-10 pb-20">
+        <div id="kanban-view" class="space-y-8 sm:space-y-12 pb-24">
             <!-- Area 1: ITQ & Tenders -->
             <section>
-                <h2 class="text-lg sm:text-xl font-bold text-primary mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
-                    <span class="w-1.5 h-6 bg-accent rounded-full"></span> ITQ & Tenders
-                </h2>
-                <div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory" id="kanban-area-itq">
+                <div class="flex items-center gap-3 mb-4 px-1">
+                    <span class="w-1 h-6 bg-accent rounded-full"></span>
+                    <h2 class="text-lg sm:text-xl font-bold text-dark tracking-tight">ITQ & Tenders</h2>
+                </div>
+                <div class="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory px-1" id="kanban-area-itq">
                     <!-- Columns generated by JS -->
                 </div>
             </section>
 
             <!-- Area 2: SVP -->
-            <section class="mt-8">
-                <h2 class="text-lg sm:text-xl font-bold text-primary mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">
-                    <span class="w-1.5 h-6 bg-purple-600 rounded-full"></span> SVP
-                </h2>
-                <div class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory" id="kanban-area-svp">
+            <section>
+                <div class="flex items-center gap-3 mb-4 px-1 border-t border-gray-200 pt-8">
+                    <span class="w-1 h-6 bg-purple-500 rounded-full"></span>
+                    <h2 class="text-lg sm:text-xl font-bold text-dark tracking-tight">SVP</h2>
+                </div>
+                <div class="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory px-1" id="kanban-area-svp">
                     <!-- Columns generated by JS -->
                 </div>
             </section>
         </div>
 
         <!-- Table View -->
-        <div id="table-view" class="hidden pb-20">
-            <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <div id="table-view" class="hidden pb-24 px-1">
+            <div class="bg-white rounded-2xl shadow-ios border border-gray-100 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-gray-100">
+                        <thead class="bg-gray-50/50">
                             <tr>
-                                <th class="px-4 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                                <th class="px-4 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">School / Programme</th>
-                                <th class="px-4 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Closing Date</th>
-                                <th class="px-4 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Assignment</th>
-                                <th class="px-4 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th class="px-4 sm:px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Costing</th>
-                                <th class="px-4 sm:px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">School / Programme</th>
+                                <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Due</th>
+                                <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Assignment</th>
+                                <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost</th>
+                                <th class="px-4 sm:px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="table-body" class="bg-white divide-y divide-gray-200"></tbody>
+                        <tbody id="table-body" class="bg-white divide-y divide-gray-50"></tbody>
                     </table>
                 </div>
             </div>
@@ -186,75 +269,181 @@
 
     </main>
 
-    <!-- FAB -->
-    <button id="add-task-btn" class="fixed bottom-6 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-2xl hover:bg-blue-900 hover:scale-110 transition-all flex items-center justify-center z-30 focus:outline-none focus:ring-4 focus:ring-blue-300">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+    <!-- FAB (Apple Style) -->
+    <button id="add-task-btn" class="fixed bottom-8 right-6 w-14 h-14 bg-ios_blue text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center z-30 focus:outline-none active:scale-95">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
     </button>
 
     <!-- Modal -->
-    <div id="modal-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all">
-            <div class="bg-primary text-white px-6 py-4 flex justify-between items-center">
-                <h3 id="modal-title" class="text-xl font-bold">New Task</h3>
-                <button id="close-modal-btn" class="text-blue-200 hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+    <div id="modal-overlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4 transition-all duration-300">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all scale-100">
+            
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                <h3 id="modal-title" class="text-lg font-bold text-dark">New Task</h3>
+                <button id="close-modal-btn" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
-            <div class="p-6 overflow-y-auto custom-scrollbar flex-grow bg-gray-50">
+            
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-grow bg-white">
                 <form id="task-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
-                    <div class="md:col-span-2"><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 border-b pb-1">Core Details</h4></div>
-                    <div class="space-y-4">
-                        <label class="block"><span class="text-sm font-semibold text-gray-700">Type<span class="text-red-500">*</span></span><select id="f_type" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"><option value="ITQ">ITQ</option><option value="SVP">SVP</option><option value="Tender">Tender</option></select></label>
-                        <div id="moe-field-group"><label class="block"><span class="text-sm font-semibold text-gray-700">MOE Code<span class="text-red-500">*</span></span><input type="text" id="f_moe_code" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"></label></div>
-                        <label class="block"><span class="text-sm font-semibold text-gray-700">Closing Date<span class="text-red-500">*</span></span><input type="date" id="f_closing_date" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"></label>
+                    <div class="md:col-span-2">
+                         <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Core Details</h4>
                     </div>
-                    <div class="space-y-4">
-                        <label class="block"><span class="text-sm font-semibold text-gray-700">School<span class="text-red-500">*</span></span><input list="school-list" id="f_school" required placeholder="Search school..." class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"><datalist id="school-list"></datalist></label>
-                        <label class="block"><span class="text-sm font-semibold text-gray-700">Assignment<span class="text-red-500">*</span></span><input type="text" id="f_assignment" readonly class="bg-gray-200 mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm font-medium"></label>
+
+                    <div class="space-y-5">
+                        <label class="block">
+                            <span class="text-xs font-semibold text-gray-600 ml-1">Type <span class="text-red-500">*</span></span>
+                            <div class="ios-select-wrapper mt-1">
+                                <select id="f_type" required class="w-full rounded-xl px-4 py-3 text-sm font-medium text-dark focus:border-ios_blue">
+                                    <option value="ITQ">ITQ</option>
+                                    <option value="SVP">SVP</option>
+                                    <option value="Tender">Tender</option>
+                                </select>
+                            </div>
+                        </label>
+
+                        <div id="moe-field-group">
+                            <label class="block">
+                                <span class="text-xs font-semibold text-gray-600 ml-1">MOE Code <span id="moe-star" class="text-red-500">*</span></span>
+                                <input type="text" id="f_moe_code" class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue" placeholder="e.g. ITQ-2025-001">
+                            </label>
+                        </div>
+
+                        <label class="block">
+                            <span class="text-xs font-semibold text-gray-600 ml-1">Closing Date <span class="text-red-500">*</span></span>
+                            <input type="date" id="f_closing_date" required class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue">
+                        </label>
                     </div>
-                    <div class="md:col-span-2 mt-2"><h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 border-b pb-1">Programme & Specs</h4></div>
+
+                    <div class="space-y-5">
+                        <label class="block">
+                            <span class="text-xs font-semibold text-gray-600 ml-1">School <span class="text-red-500">*</span></span>
+                            <input list="school-list" id="f_school" required placeholder="Search school..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue bg-white">
+                            <datalist id="school-list"></datalist>
+                        </label>
+
+                        <label class="block">
+                            <span class="text-xs font-semibold text-gray-600 ml-1">Assignment <span class="text-red-500">*</span></span>
+                            <input type="text" id="f_assignment" readonly class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-gray-500 bg-gray-50 border-dashed cursor-not-allowed font-medium">
+                        </label>
+                    </div>
+
+                    <div class="md:col-span-2 mt-2 border-t border-gray-100 pt-4">
+                         <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Programme & Resources</h4>
+                    </div>
+
                     <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <label class="block"><span class="text-sm font-semibold text-gray-700">Programme Name<span class="text-red-500">*</span></span><input type="text" id="f_programme" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"></label>
-                        <label class="block"><span class="text-sm font-semibold text-gray-700">Brand<span class="text-red-500">*</span></span><select id="f_brand" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"><option value="">Select Brand...</option><option value="Artelier">Artelier</option><option value="Epitomedia">Epitomedia</option><option value="Life Champs">Life Champs</option><option value="Musicon">Musicon</option><option value="Passionista">Passionista</option><option value="Sports First">Sports First</option><option value="Studio Wu">Studio Wu</option><option value="Vivarch Enrichment">Vivarch Enrichment</option><option value="Regenerate">Regenerate</option><option value="STEMaker">STEMaker</option><option value="Travelearn">Travelearn</option><option value="Welless 365">Welless 365</option></select></label>
+                        <label class="block">
+                            <span class="text-xs font-semibold text-gray-600 ml-1">Programme Name <span class="text-red-500">*</span></span>
+                            <input type="text" id="f_programme" required class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue">
+                        </label>
+                        <label class="block">
+                            <span class="text-xs font-semibold text-gray-600 ml-1">Brand <span class="text-red-500">*</span></span>
+                            <div class="ios-select-wrapper mt-1">
+                                <select id="f_brand" required class="w-full rounded-xl px-4 py-3 text-sm font-medium text-dark focus:border-ios_blue">
+                                    <option value="">Select Brand...</option>
+                                    <option value="Artelier">Artelier</option>
+                                    <option value="Epitomedia">Epitomedia</option>
+                                    <option value="Life Champs">Life Champs</option>
+                                    <option value="Musicon">Musicon</option>
+                                    <option value="Passionista">Passionista</option>
+                                    <option value="Sports First">Sports First</option>
+                                    <option value="Studio Wu">Studio Wu</option>
+                                    <option value="Vivarch Enrichment">Vivarch Enrichment</option>
+                                    <option value="Regenerate">Regenerate</option>
+                                    <option value="STEMaker">STEMaker</option>
+                                    <option value="Travelearn">Travelearn</option>
+                                    <option value="Welless 365">Welless 365</option>
+                                </select>
+                            </div>
+                        </label>
                     </div>
+
                     <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <label class="block"><span class="text-sm font-semibold text-gray-700">Specifications (Link)<span class="text-red-500">*</span></span><input type="url" id="f_specs" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"></label>
-                        <label class="block"><span class="text-sm font-semibold text-gray-700">Working Folder (Link)<span class="text-red-500">*</span></span><input type="url" id="f_folder" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"></label>
+                        <label class="block" id="specs-label">
+                            <span class="text-xs font-semibold text-gray-600 ml-1">Specifications Link <span class="text-red-500">*</span></span>
+                            <input type="url" id="f_specs" required placeholder="https://..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-blue-600 underline decoration-blue-300 focus:border-ios_blue">
+                        </label>
+                        <label class="block">
+                            <span class="text-xs font-semibold text-gray-600 ml-1">Working Folder Link <span class="text-red-500">*</span></span>
+                            <input type="url" id="f_folder" required placeholder="https://..." class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-blue-600 underline decoration-blue-300 focus:border-ios_blue">
+                        </label>
                     </div>
-                    <div class="md:col-span-2 bg-blue-50/50 p-4 rounded-lg border border-blue-100">
-                        <h4 class="font-bold text-primary mb-3 text-sm uppercase">Resources & Costing</h4>
+
+                    <div class="md:col-span-2 bg-gray-50/80 p-5 rounded-2xl border border-gray-200">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <label class="block"><span class="text-sm font-semibold text-gray-700">Trainers</span><input type="text" id="f_trainers" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm bg-white"></label>
-                            <label class="block"><span class="text-sm font-semibold text-gray-700">Costing Type<span class="text-red-500">*</span></span><select id="f_costing_type" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm bg-white"><option value="">Select Type...</option><option value="Package">Package</option><option value="Participant">Participant</option><option value="Hour">Hour</option></select></label>
+                            <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Trainers</span><input type="text" id="f_trainers" class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue"></label>
+                            <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Costing Type <span class="text-red-500">*</span></span>
+                                <div class="ios-select-wrapper mt-1">
+                                    <select id="f_costing_type" required class="w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue">
+                                        <option value="">Select Type...</option>
+                                        <option value="Package">Package</option>
+                                        <option value="Participant">Participant</option>
+                                        <option value="Hour">Hour</option>
+                                    </select>
+                                </div>
+                            </label>
                             <div id="costing-details" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
-                                <label class="block"><span class="text-sm font-semibold text-gray-700">Programme Specs</span><textarea id="f_cost_specs" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm bg-white"></textarea></label>
-                                <label class="block"><span class="text-sm font-semibold text-gray-700">Programme Cost</span><textarea id="f_cost_val" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm bg-white"></textarea></label>
+                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Programme Specs</span><textarea id="f_cost_specs" rows="3" class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue"></textarea></label>
+                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Programme Cost</span><textarea id="f_cost_val" rows="3" class="mt-1 w-full rounded-xl px-4 py-3 text-sm bg-white focus:border-ios_blue"></textarea></label>
                             </div>
                         </div>
                     </div>
-                    <div class="md:col-span-2 border-t pt-4">
-                        <h4 class="font-bold text-gray-700 mb-2 text-sm uppercase">Contact Information<span class="text-red-500">*</span></h4>
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name (Req)" id="f_c1_name" required class="border rounded p-2 col-span-1"><input placeholder="Designation" id="f_c1_des" class="border rounded p-2"><input placeholder="Dept" id="f_c1_dept" class="border rounded p-2"><input placeholder="Contact #" id="f_c1_cont" class="border rounded p-2"><input placeholder="Email" id="f_c1_email" class="border rounded p-2"></div>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name" id="f_c2_name" class="border rounded p-2 col-span-1"><input placeholder="Designation" id="f_c2_des" class="border rounded p-2"><input placeholder="Dept" id="f_c2_dept" class="border rounded p-2"><input placeholder="Contact #" id="f_c2_cont" class="border rounded p-2"><input placeholder="Email" id="f_c2_email" class="border rounded p-2"></div>
-                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name" id="f_c3_name" class="border rounded p-2 col-span-1"><input placeholder="Designation" id="f_c3_des" class="border rounded p-2"><input placeholder="Dept" id="f_c3_dept" class="border rounded p-2"><input placeholder="Contact #" id="f_c3_cont" class="border rounded p-2"><input placeholder="Email" id="f_c3_email" class="border rounded p-2"></div>
+
+                    <div class="md:col-span-2 mt-2 border-t border-gray-100 pt-4">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Contact Person(s)</h4>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name (Req)" id="f_c1_name" required class="border rounded-lg p-2 col-span-1"><input placeholder="Designation" id="f_c1_des" class="border rounded-lg p-2"><input placeholder="Dept" id="f_c1_dept" class="border rounded-lg p-2"><input placeholder="Contact #" id="f_c1_cont" class="border rounded-lg p-2"><input placeholder="Email" id="f_c1_email" class="border rounded-lg p-2"></div>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name" id="f_c2_name" class="border rounded-lg p-2 col-span-1"><input placeholder="Designation" id="f_c2_des" class="border rounded-lg p-2"><input placeholder="Dept" id="f_c2_dept" class="border rounded-lg p-2"><input placeholder="Contact #" id="f_c2_cont" class="border rounded-lg p-2"><input placeholder="Email" id="f_c2_email" class="border rounded-lg p-2"></div>
+                            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"><input placeholder="Name" id="f_c3_name" class="border rounded-lg p-2 col-span-1"><input placeholder="Designation" id="f_c3_des" class="border rounded-lg p-2"><input placeholder="Dept" id="f_c3_dept" class="border rounded-lg p-2"><input placeholder="Contact #" id="f_c3_cont" class="border rounded-lg p-2"><input placeholder="Email" id="f_c3_email" class="border rounded-lg p-2"></div>
                         </div>
                     </div>
-                    <div class="md:col-span-2 border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <label class="block"><span class="text-sm font-semibold text-gray-700">Notes</span><textarea id="f_notes" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"></textarea></label>
-                        <div class="space-y-4">
-                            <label class="block"><span class="text-sm font-semibold text-gray-700">Appointment (Date & Time)</span><input type="datetime-local" id="f_appointment" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm"></label>
-                            <label class="block"><span class="text-sm font-semibold text-gray-700">Status<span class="text-red-500">*</span></span><select id="f_status" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2.5 text-sm font-semibold text-primary"><option value="In Progress" selected>In Progress</option><option value="Pending Award">Pending Award</option><option value="Awarded">Awarded</option><option value="Not Awarded">Not Awardo</option><option value="No Award">No Award</option><option value="Skipped">Skipped</option></select></label>
+
+                    <div class="md:col-span-2 border-t border-gray-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Notes</span><textarea id="f_notes" rows="3" class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue"></textarea></label>
+                        <div class="space-y-5">
+                            <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Appointment</span><input type="datetime-local" id="f_appointment" class="mt-1 w-full rounded-xl px-4 py-3 text-sm text-dark focus:border-ios_blue"></label>
+                            <label class="block">
+                                <span class="text-xs font-semibold text-gray-600 ml-1">Status <span class="text-red-500">*</span></span>
+                                <div class="ios-select-wrapper mt-1">
+                                    <select id="f_status" required class="w-full rounded-xl px-4 py-3 text-sm font-bold text-ios_blue focus:border-ios_blue">
+                                        <option value="In Progress" selected>In Progress</option>
+                                        <option value="Pending Award">Pending Award</option>
+                                        <option value="Awarded">Awarded</option>
+                                        <option value="Not Awarded">Not Awarded</option>
+                                        <option value="No Award">No Award</option>
+                                        <option value="Skipped">Skipped</option>
+                                    </select>
+                                </div>
+                            </label>
                         </div>
                     </div>
                 </form>
             </div>
-            <div class="bg-gray-100 px-6 py-4 flex justify-between border-t items-center rounded-b-xl">
-                <button type="button" id="delete-btn" class="text-red-600 hover:text-red-800 font-bold text-sm hidden flex items-center gap-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>Delete Task</button>
+            
+            <!-- Modal Footer (Apple Style) -->
+            <div class="bg-white border-t border-gray-100 px-6 py-4 flex justify-between items-center rounded-b-3xl sticky bottom-0">
+                
+                <!-- DELETE Button -->
+                <button type="button" id="delete-btn" class="text-red-500 hover:text-red-600 font-medium text-sm hidden flex items-center gap-1 p-2 sm:p-0 transition">
+                    <svg class="w-6 h-6 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    <span class="hidden sm:inline">Delete</span>
+                </button>
+                
                 <div class="flex gap-3 ml-auto">
-                    <button type="button" id="cancel-btn" class="px-5 py-2.5 border border-gray-300 rounded-md text-gray-700 hover:bg-white font-semibold transition">Cancel</button>
-                    <button type="button" id="save-btn" class="px-6 py-2.5 bg-primary text-white rounded-md hover:bg-blue-900 font-bold shadow-md transition transform hover:-translate-y-0.5">Save Task</button>
+                    <!-- CANCEL Button -->
+                    <button type="button" id="cancel-btn" class="px-4 py-3 sm:py-2 rounded-full sm:rounded-lg text-ios_blue hover:bg-blue-50 font-semibold transition flex items-center justify-center">
+                        <svg class="w-6 h-6 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <span class="hidden sm:inline">Cancel</span>
+                    </button>
+                    
+                    <!-- SAVE Button -->
+                    <button type="button" id="save-btn" class="px-4 sm:px-8 py-3 sm:py-2 bg-ios_blue text-white rounded-full sm:rounded-lg hover:bg-blue-600 font-semibold shadow-ios transition transform active:scale-95 flex items-center justify-center">
+                        <svg class="w-6 h-6 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <span class="hidden sm:inline">Save Task</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -620,19 +809,6 @@
             { school: "Jiemin Primary School", consultant: "", zone: "North" },
             { school: "Ang Mo Kio Primary School", consultant: "", zone: "South" },
             { school: "Anglo-Chinese School (Primary)", consultant: "", zone: "South" },
-            { school: "Cantonment Primary School", consultant: "", zone: "South" },
-            { school: "Cedar Girls' Secondary School", consultant: "", zone: "South" },
-            { school: "CHIJ (Kellock)", consultant: "", zone: "South" },
-            { school: "CHIJ Our Lady of the Nativity", consultant: "", zone: "South" },
-            { school: "First Toa Payoh Primary School", consultant: "", zone: "South" },
-            { school: "Jing Shan Primary School", consultant: "", zone: "South" },
-            { school: "Kuo Chuan Presbyterian Primary School", consultant: "", zone: "South" },
-            { school: "Northlight School", consultant: "", zone: "South" },
-            { school: "Raffles Girls' Primary School", consultant: "", zone: "South" },
-            { school: "Teck Ghee Primary School", consultant: "", zone: "South" },
-            { school: "Townsville Primary School", consultant: "", zone: "South" },
-            { school: "Methodist Girls' School (Independent)", consultant: "", zone: "West" },
-            { school: "Pioneer Primary School", consultant: "", zone: "West" }
         ];
 
         // --- INIT VARIABLES ---
@@ -690,7 +866,6 @@
         
         // --- PUBLIC DATA PATH ---
         function getTaskCollectionRef() {
-            // Using the MANDATORY public path for shared data
             return collection(db, `artifacts/${appId}/public/data/tasks`);
         }
 
@@ -814,6 +989,11 @@
             document.getElementById('filter-type').value = currentType;
             document.getElementById('filter-ec').value = currentEC;
             document.getElementById('filter-status').value = currentStatus;
+            
+            // Fix: Ensure default selection is displayed if filters were empty
+            if (currentType === '') document.getElementById('filter-type').value = 'all';
+            if (currentStatus === '') document.getElementById('filter-status').value = 'active';
+            if (currentEC === '') document.getElementById('filter-ec').value = 'all';
         }
 
         // --- SAVE / DELETE ---
@@ -895,7 +1075,13 @@
         let touchGhost = null;
         let currentDropZone = null;
 
+        // Check if the screen is considered "narrow" (mobile)
+        const isMobileScreen = () => window.innerWidth <= 640;
+        
         function handleTouchStart(e) {
+            // 1. Mobile Drag Disable Check
+            if (isMobileScreen()) return; 
+
             if (!e.target.closest('.kanban-card-header')) return;
             const card = e.target.closest('.kanban-card');
             if (!card) return;
@@ -971,6 +1157,9 @@
         }
 
         window.allowDrop = (ev) => {
+            // 1. Mobile Drag Disable Check
+            if (isMobileScreen()) return; 
+            
             ev.preventDefault();
             const colContent = ev.target.closest('.kanban-column-content');
             if (colContent) colContent.classList.add('drag-over');
@@ -982,11 +1171,17 @@
         }
 
         window.drag = (ev) => {
+            // 1. Mobile Drag Disable Check
+            if (isMobileScreen()) return; 
+
             ev.dataTransfer.setData("text", ev.target.getAttribute('data-id'));
             ev.target.classList.add('dragging');
         }
 
         window.drop = async (ev, newStatus) => {
+            // 1. Mobile Drag Disable Check
+            if (isMobileScreen()) return; 
+
             ev.preventDefault();
             const colContent = ev.target.closest('.kanban-column-content');
             if (colContent) colContent.classList.remove('drag-over');
@@ -1052,21 +1247,24 @@
                 const headerColor = EC_BG_HEADER[ecName] || EC_BG_HEADER['default'];
                 
                 const card = document.createElement('div');
+                // Use default cursor for mobile, drag-grab for wide
                 card.className = `kanban-card bg-white rounded shadow-sm border border-gray-200 cursor-grab hover:shadow-md transition-all transform hover:-translate-y-1 overflow-hidden select-none`;
-                card.setAttribute('draggable', 'true');
-                card.setAttribute('data-id', task.id);
-                card.ondragstart = (event) => drag(event);
                 
-                // Add touch listeners
-                card.addEventListener('touchstart', handleTouchStart, {passive: false});
-                card.addEventListener('touchmove', handleTouchMove, {passive: false});
-                card.addEventListener('touchend', handleTouchEnd);
+                // Disable native drag on mobile based on width. We keep the attribute for desktop use.
+                card.setAttribute('draggable', window.innerWidth > 640 ? 'true' : 'false');
+                card.setAttribute('data-id', task.id);
+                
+                if (window.innerWidth > 640) {
+                    card.ondragstart = (event) => drag(event);
+                } else {
+                    // Touch events are attached globally to the body, no need to attach here
+                }
                 
                 const dateObj = new Date(task.closing_date);
                 const dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
                 
                 card.innerHTML = `
-                    <div class="kanban-card-header ${headerColor} text-white px-3 py-1.5 flex justify-between items-center cursor-grab active:cursor-grabbing" onclick="window.openModalById('${task.id}')">
+                    <div class="kanban-card-header ${headerColor} text-white px-3 py-1.5 flex justify-between items-center cursor-pointer active:cursor-grabbing" onclick="window.openModalById('${task.id}')">
                         <span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 rounded pointer-events-none">${task.type}</span>
                         <span class="text-xs font-medium flex items-center gap-1 pointer-events-none">
                              <svg class="w-3 h-3 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
