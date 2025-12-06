@@ -911,7 +911,17 @@
             const skip = document.getElementById('show-skipped-toggle').checked;
             
             return tasks.filter(t => {
-                if (search && ![t.school, t.programme, t.type, t.moe_code].join(' ').toLowerCase().includes(search)) return false;
+                // Collect all searchable text
+                const searchableItems = [
+                    t.school, t.programme, t.type, t.moe_code,
+                    t.contact1?.name, t.contact1?.email, t.contact1?.cont,
+                    t.contact2?.name, t.contact2?.email, t.contact2?.cont,
+                    t.contact3?.name, t.contact3?.email, t.contact3?.cont
+                ];
+                
+                const fullText = searchableItems.filter(Boolean).join(' ').toLowerCase();
+
+                if (search && !fullText.includes(search)) return false;
                 if (type !== 'all' && t.type !== type) return false;
                 if (status === 'active' && t.status === 'Skipped') return false;
                 if (status !== 'all' && status !== 'active' && t.status !== status) return false;
