@@ -20,7 +20,16 @@
         }
     </script>
     <style>
-        body { background-color: #F2F2F7; color: #1C1C1E; -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
+        /* Zoom Prevention & Touch Action */
+        html { touch-action: manipulation; }
+        body { 
+            background-color: #F2F2F7; 
+            color: #1C1C1E; 
+            -webkit-font-smoothing: antialiased; 
+            overscroll-behavior-y: none;
+            touch-action: pan-x pan-y; /* Allows scrolling but prevents zoom gestures */
+        }
+        
         ::-webkit-scrollbar { width: 0px; background: transparent; } 
         .kanban-column { min-width: 300px; }
         .glass { background-color: rgba(255, 255, 255, 0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); }
@@ -125,10 +134,7 @@
                 <div class="flex bg-gray-200/80 p-1 rounded-lg">
                     <button id="view-kanban" class="px-3 sm:px-4 py-1 rounded-[6px] text-xs font-semibold transition-all shadow-sm bg-white text-dark flex items-center gap-1">
                         <span class="hidden sm:inline">Kanban</span>
-                        <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 00-2-2h-2a2 2 0 00-2 2" class="hidden"></path>
-    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"></path>
-</svg>
+                        <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 00-2-2h-2a2 2 0 00-2 2" class="hidden"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"></path></svg>
                     </button>
                     <button id="view-table" class="px-3 sm:px-4 py-1 rounded-[6px] text-xs font-medium text-gray-500 hover:text-dark transition-all">
                         <span class="hidden sm:inline">Table</span>
@@ -267,7 +273,7 @@
             <div class="p-6 space-y-6 overflow-y-auto pb-32"> 
                 <div class="space-y-2">
                     <label class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Type</label>
-                    <select id="mob-filter-type" class="w-full rounded-xl border-gray-200 py-3" onchange="window.setMobileFilter('type', this.value)">
+                    <select id="mob-filter-type" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1" onchange="window.setMobileFilter('type', this.value)">
                          <option value="all">All Types</option>
                          <option value="ITQ">ITQ</option>
                          <option value="Tender">Tender</option>
@@ -276,13 +282,13 @@
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Consultant</label>
-                    <select id="mob-filter-ec" class="w-full rounded-xl border-gray-200 py-3" onchange="window.setMobileFilter('ec', this.value)">
+                    <select id="mob-filter-ec" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1" onchange="window.setMobileFilter('ec', this.value)">
                         <option value="all">All Consultants</option>
                     </select>
                 </div>
                 <div class="space-y-2">
                     <label class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Status</label>
-                     <select id="mob-filter-status" class="w-full rounded-xl border-gray-200 py-3" onchange="window.setMobileFilter('status', this.value)">
+                     <select id="mob-filter-status" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1" onchange="window.setMobileFilter('status', this.value)">
                         <option value="active" selected>Active Tasks</option>
                         <option value="all">Show All</option>
                         <option value="Skipped">Skipped</option>
@@ -523,6 +529,11 @@
         let db, auth, userId = null;
         let allTasks = [], allSchools = [], allConsultants = [], editingTaskId = null, editingSchoolId = null, activePopoverTaskId = null, currentView = 'kanban', schoolSort = { key: 'school', dir: 'asc' };
 
+        // Prevent iOS Zoom on Gesture
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+
         // View State for Independent Filtering
         const viewFilters = {
             kanban: { search: '', type: 'all', ec: 'all', status: 'active', skipped: false },
@@ -564,7 +575,13 @@
             const app = initializeApp(firebaseConfig); db = getFirestore(app); auth = getAuth(app);
             await signInAnonymously(auth);
             onAuthStateChanged(auth, (user) => {
-                if (user) { userId = user.uid; document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none'); initListeners(); }
+                if (user) { 
+                    userId = user.uid; 
+                    document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none'); 
+                    initListeners(); 
+                    // Force UI update to show filters for initial view (Kanban)
+                    toggleView(currentView);
+                }
             });
         }
 
