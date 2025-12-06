@@ -2,8 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CheckList: Corporate Work Tracker (Shared)</title>
+    <!-- Viewport settings for native feel (disable zoom, cover notch) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <title>CheckList</title>
+
+    <!-- === PWA / NATIVE APP CONFIGURATION === -->
+    
+    <!-- 1. iOS Standalone Mode -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CheckList">
+
+    <!-- 2. Android/Chrome Theme -->
+    <meta name="theme-color" content="#F2F2F7">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- 3. App Icon (Embedded Base64 for Single-File Portability) -->
+    <!-- This replaces the need for an external logo.png file -->
+    <link rel="apple-touch-icon" href="data:image/png;base64,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" />
+    
+    <!-- 4. Dynamic Manifest (Injected via JS to avoid external file requirement) -->
+    <script>
+        const manifest = {
+            "name": "CheckList",
+            "short_name": "CheckList",
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#F2F2F7",
+            "theme_color": "#F2F2F7",
+            "icons": [{
+                "src": document.querySelector('link[rel="apple-touch-icon"]').href,
+                "sizes": "192x192",
+                "type": "image/png"
+            }]
+        };
+        const stringManifest = JSON.stringify(manifest);
+        const blob = new Blob([stringManifest], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifestURL;
+        document.head.appendChild(link);
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -28,6 +70,9 @@
             -webkit-font-smoothing: antialiased; 
             overscroll-behavior-y: none;
             touch-action: pan-x pan-y; /* Allows scrolling but prevents zoom gestures */
+            /* Safe area for iPhone notch/home bar */
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
         }
         
         ::-webkit-scrollbar { width: 0px; background: transparent; } 
@@ -1093,3 +1138,5 @@
     </script>
 </body>
 </html>
+
+
