@@ -2,63 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport settings for native feel (disable zoom, cover notch) -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
-    <title>CheckList</title>
-
-    <!-- === PWA / NATIVE APP CONFIGURATION === -->
-    
-    <!-- 1. iOS Standalone Mode -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="CheckList">
-
-    <!-- 2. Android/Chrome Theme -->
-    <meta name="theme-color" content="#F2F2F7">
-    <meta name="mobile-web-app-capable" content="yes">
-
-    <!-- 3. App Icon (Verified Base64 PNG - Blue Square with White Check) -->
-    <link rel="apple-touch-icon" sizes="180x180" id="app-icon-ios" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAMAAAAKE/YAAAAAaVBMVEUAAAAAAAD///+ZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///9/f7/RAAAAKXRSTlMA/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A7kFidQAABA5JREFUeNrt2t1q2zAUhuFR0iRxEyc1aV3X/d9qU0hgCxt0Y6D3u54FPoTiR0YSAAAAAAAAAAAAAAAAAAAAAAAAuF/d/XG992sA8Me+X/fH7fF43B/3697/MgD8vj/u94V/VwL8r/evBgB/q/x3JcCl/K8HAC+r/HclwF/l738dAF6V/64EuJT/9QDgVfnvSoC/yt//OgC8Kv9dCXAp/+sBwKvud92uBLiU//UA4O/y35UA1/K/HgD8Xf67EuBa/tcDgL/Lf1cCXMv/egDwV/nvSoBL+d8PAN6V/64E+Kv8/e8DgHflvysBLuV/PwB4V/67EuCv8ve/DwDelv+uBLiW//0A4G3570qAa/nfDwDelv+uBLiW//0A4G3570qAa/nfDwDelv+uBLiW//0A4G3570qAa/nfDwDelv+uBLiW//0A4G3570qAa/nfDwD+Vf67EuBS/vcFgHflvysB/ip///sC4F3570qAS/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4F/lvysBLuV/bwB4V/67EuCv8ve/NwC8K/9dCXAp/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwL/Kf1cCXMr/3gDwrvx3JcBf5e9/bwB4V/67EuBS/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgH+V/64EuJT/vQHgXfnvSoC/yt//3gDwrvx3JcCl/O8NAG/Lf1cCXMv/3gDwtvx3JcC1/O8NAG/Lf1cCXMv/3gDwtvx3JcC1/O8NAG/Lf1cCXMv/3gDwtvx3JcC1/O8NAG/Lf1cCXMv/3gDwtvx3JcC1/O8NAG/Lf1cCXMv/3gDw3+X/+31/3O/3694BAAAAAAAAAAAAAAAAAAAAAAAAAPDP/gGUw2/jT/XJDgAAAABJRU5ErkJggg==">
-    <link rel="icon" type="image/png" sizes="180x180" id="app-icon-android" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAMAAAAKE/YAAAAAaVBMVEUAAAAAAAD///+ZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///8zMzOZmZkzMzMAAAD///9/f7/RAAAAKXRSTlMA/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A7kFidQAABA5JREFUeNrt2t1q2zAUhuFR0iRxEyc1aV3X/d9qU0hgCxt0Y6D3u54FPoTiR0YSAAAAAAAAAAAAAAAAAAAAAAAAuF/d/XG992sA8Me+X/fH7fF43B/3697/MgD8vj/u94V/VwL8r/evBgB/q/x3JcCl/K8HAC+r/HclwF/l738dAF6V/64EuJT/9QDgVfnvSoC/yt//OgC8Kv9dCXAp/+sBwKvud92uBLiU//UA4O/y35UA1/K/HgD8Xf67EuBa/tcDgL/Lf1cCXMv/egDwV/nvSoBL+d8PAN6V/64E+Kv8/e8DgHflvysBLuV/PwB4V/67EuCv8ve/DwDelv+uBLiW//0A4G3570qAa/nfDwDelv+uBLiW//0A4G3570qAa/nfDwDelv+uBLiW//0A4G3570qAa/nfDwDelv+uBLiW//0A4G3570qAa/nfDwD+Vf67EuBS/vcFgHflvysB/ip///sC4F3570qAS/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4G3570qAa/nfFwDelv+uBLiW/30B4F/lvysBLuV/bwB4V/67EuCv8ve/NwC8K/9dCXAp/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwNvy35UA1/K/NwC8Lf9dCXAt/3sDwL/Kf1cCXMr/3gDwrvx3JcBf5e9/bwB4V/67EuBS/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgLflvysBruV/bwB4W/67EuBa/vcGgH+V/64EuJT/vQHgXfnvSoC/yt//3gDwrvx3JcCl/O8NAG/Lf1cCXMv/3gDwtvx3JcC1/O8NAG/Lf1cCXMv/3gDwtvx3JcC1/O8NAG/Lf1cCXMv/3gDwtvx3JcC1/O8NAG/Lf1cCXMv/3gDwtvx3JcC1/O8NAG/Lf1cCXMv/3gDw3+X/+31/3O/3694BAAAAAAAAAAAAAAAAAAAAAAAAAPDP/gGUw2/jT/XJDgAAAABJRU5ErkJggg==">
-
-    <!-- 4. Dynamic Manifest Generation -->
-    <script>
-        // Define the manifest structure
-        const manifest = {
-            "name": "CheckList",
-            "short_name": "CheckList",
-            "start_url": ".",
-            "id": "/?source=pwa",
-            "display": "standalone",
-            "background_color": "#F2F2F7",
-            "theme_color": "#F2F2F7",
-            "scope": "/",
-            "icons": [
-                {
-                    "src": document.querySelector('#app-icon-android').href,
-                    "sizes": "180x180",
-                    "type": "image/png",
-                    "purpose": "any maskable"
-                },
-                {
-                    "src": document.querySelector('#app-icon-android').href,
-                    "sizes": "512x512",
-                    "type": "image/png"
-                }
-            ]
-        };
-        
-        // Convert to blob and inject
-        const stringManifest = JSON.stringify(manifest);
-        const blob = new Blob([stringManifest], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(blob);
-        const link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = manifestURL;
-        document.head.appendChild(link);
-    </script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CheckList: Corporate Work Tracker (Shared)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -83,14 +28,9 @@
             -webkit-font-smoothing: antialiased; 
             overscroll-behavior-y: none;
             touch-action: pan-x pan-y; /* Allows scrolling but prevents zoom gestures */
-            /* Safe area for iPhone notch/home bar */
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
         }
         
         ::-webkit-scrollbar { width: 0px; background: transparent; } 
-        * { scrollbar-width: none; -ms-overflow-style: none; }
-
         .kanban-column { min-width: 300px; }
         .glass { background-color: rgba(255, 255, 255, 0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); }
         
@@ -196,7 +136,7 @@
                         <span class="hidden sm:inline">Kanban</span>
                         <svg class="w-4 h-4 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 00-2-2h-2a2 2 0 00-2 2" class="hidden"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v12a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z"></path>
                         </svg>
                     </button>
                     <button id="view-table" class="px-3 sm:px-4 py-1 rounded-[6px] text-xs font-medium text-gray-500 hover:text-dark transition-all">
