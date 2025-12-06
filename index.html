@@ -553,6 +553,15 @@
         const formatDate = (dateStr) => { if (!dateStr) return '-'; try { return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); } catch (e) { return dateStr; } };
         const getProgressState = (task) => { const p = task.progress || {}; const annexB = p.annex_b || (task.cost_val && task.cost_val.trim().length > 0); const firstSix = [p.proposal, annexB, p.annex_f, p.outline, p.track_record, p.trainers_files].every(Boolean); const bothLastTwo = [p.gebiz, p.email].every(Boolean); return { proposal: p.proposal, annex_b: annexB, annex_f: p.annex_f, outline: p.outline, track_record: p.track_record, trainers_files: p.trainers_files, gebiz: p.gebiz, email: p.email, allFirstSix: firstSix, bothLastTwo: bothLastTwo }; };
 
+        // Helper to get formatted assignment label with Brand
+        const getTaskLabel = (t) => {
+            const brand = t.brand === 'Vivarch Enrichment' ? 'Vivarch' : (t.brand || '');
+            if (!t.assignment && !brand) return 'Unassigned';
+            if (!t.assignment) return brand;
+            if (!brand) return t.assignment;
+            return `${t.assignment}, ${brand}`;
+        };
+
         // --- NEW COLOR LOGIC ---
         function getConsultantStyles(name) {
             const consultant = allConsultants.find(c => c.name === name);
@@ -781,6 +790,7 @@
             const ps = getProgressState(task);
             const segs = PROGRESS_ITEMS.map((item, i) => `<div class="progress-segment ${i<6?(ps.allFirstSix && ps[item.id]?'active-solid':(ps[item.id]?'active-light':'')):(ps.bothLastTwo && ps[item.id]?'active-solid':(ps[item.id]?'active-light':''))}"></div>`).join('');
             const moeSuffix = task.moe_code && task.moe_code.length > 4 ? task.moe_code.slice(-4) : task.moe_code;
+            const assignmentDisplay = getTaskLabel(task);
 
             const card = document.createElement('div');
             card.className = `kanban-card bg-white rounded-xl shadow-sm border border-gray-100 cursor-grab hover:shadow-ios-hover transition-all transform hover:-translate-y-1 overflow-hidden relative`;
@@ -804,7 +814,7 @@
                              <a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent p-1" onclick="event.stopPropagation()"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg></a>
                              <button class="text-gray-400 hover:text-green-600 p-1" onclick="event.stopPropagation(); window.toggleProgress(event, '${task.id}')"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></button>
                          </div>
-                        <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700 whitespace-nowrap">${task.assignment || 'Unassigned'}</span>
+                        <span class="text-[10px] font-medium px-2 py-0.5 rounded bg-blue-50 text-blue-700 whitespace-nowrap">${assignmentDisplay}</span>
                     </div>
                     <div class="flex gap-0.5 mt-2 h-1 w-full opacity-80">${segs}</div>
                 </div>`;
@@ -833,6 +843,7 @@
                 const styles = getConsultantStyles(ec);
                 const ps = getProgressState(task);
                 const segs = PROGRESS_ITEMS.map((item, i) => `<div class="progress-segment ${i<6?(ps.allFirstSix && ps[item.id]?'active-solid':(ps[item.id]?'active-light':'')):(ps.bothLastTwo && ps[item.id]?'active-solid':(ps[item.id]?'active-light':''))}"></div>`).join('');
+                const assignmentDisplay = getTaskLabel(task);
                 const tr = document.createElement('tr');
                 tr.className = `cursor-pointer border-b border-gray-100 transition-colors`;
                 // Apply dynamic background via inline style
@@ -846,7 +857,7 @@
                     <td class="px-4 sm:px-6 py-4 text-sm font-bold text-gray-700 align-middle">${task.type}</td>
                     <td class="px-4 sm:px-6 py-4 align-middle"><div class="text-sm font-bold text-gray-900">${task.school}</div><div class="text-xs text-gray-600">${task.programme}</div><div class="text-xs text-gray-400 font-mono">${task.moe_code||''}</div></td>
                     <td class="px-4 sm:px-6 py-4 text-sm text-gray-500 font-mono align-middle">${formatDate(task.closing_date)}</td>
-                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-600 align-middle whitespace-nowrap"><span class="bg-white border border-gray-200 px-2 py-1 rounded-md text-xs shadow-sm">${task.assignment||'-'}</span></td>
+                    <td class="px-4 sm:px-6 py-4 text-sm text-gray-600 align-middle whitespace-nowrap"><span class="bg-white border border-gray-200 px-2 py-1 rounded-md text-xs shadow-sm">${assignmentDisplay}</span></td>
                     <td class="px-4 sm:px-6 py-4 align-middle whitespace-nowrap"><div class="flex flex-col gap-1.5"><span class="px-2.5 py-0.5 text-xs font-bold rounded-full w-fit ${task.status==='In Progress'?'bg-green-100 text-green-800':'bg-gray-100 text-gray-600'}">${task.status}</span><div class="flex gap-0.5 h-1 w-full max-w-[120px] opacity-80">${segs}</div></div></td>
                     <td class="px-4 sm:px-6 py-4 text-sm text-gray-500 align-middle">${task.costing_type||'-'}</td>
                     <td class="px-4 sm:px-6 py-4 text-right align-middle"><div class="flex gap-2 justify-end"><a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></a><a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg></a><button class="text-gray-400 hover:text-green-600 p-1" onclick="event.stopPropagation(); window.toggleProgress(event, '${task.id}')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></button></div></td>`;
