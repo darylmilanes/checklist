@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CheckList: Corporate Work Tracker (Shared)</title>
+    
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Updated Favicon Link -->
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="theme-color" content="#F2F2F7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -180,9 +190,9 @@
                     </select>
                 </div>
                 <div class="shrink-0 w-40">
-                     <select id="filter-ec" class="filter-select rounded-lg text-base sm:text-sm pl-5 py-1.5 pr-8 font-medium cursor-pointer" onchange="window.refreshView()">
-                         <option value="all">All Consultants</option>
-                     </select>
+                      <select id="filter-ec" class="filter-select rounded-lg text-base sm:text-sm pl-5 py-1.5 pr-8 font-medium cursor-pointer" onchange="window.refreshView()">
+                          <option value="all">All Consultants</option>
+                      </select>
                 </div>
                 <div class="ios-select-wrapper shrink-0">
                     <select id="filter-status" class="filter-select rounded-lg text-base sm:text-sm pl-5 py-1.5 pr-8 font-medium cursor-pointer">
@@ -497,7 +507,7 @@
 
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Active Staff</h4>
                 <div class="bg-white border border-gray-100 rounded-xl overflow-hidden mb-4">
-                     <table class="min-w-full divide-y divide-gray-50">
+                      <table class="min-w-full divide-y divide-gray-50">
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -506,14 +516,14 @@
                             </tr>
                         </thead>
                         <tbody id="consultant-list-active" class="bg-white divide-y divide-gray-50"></tbody>
-                     </table>
+                      </table>
                 </div>
 
                 <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Inactive</h4>
                 <div class="bg-gray-50 border border-gray-100 rounded-xl overflow-hidden">
-                     <table class="min-w-full divide-y divide-gray-100">
+                      <table class="min-w-full divide-y divide-gray-100">
                         <tbody id="consultant-list-inactive" class="divide-y divide-gray-100"></tbody>
-                     </table>
+                      </table>
                 </div>
             </div>
         </div>
