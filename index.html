@@ -34,16 +34,17 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
-    <!-- CONFIRMATION MODAL -->
+    <!-- CONFIRMATION / ALERT MODAL -->
     <div id="confirm-modal" class="fixed inset-0 z-[110] bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 transition-all duration-200 opacity-0">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full transform transition-all scale-95" id="confirm-modal-content">
-            <div class="w-12 h-12 rounded-full bg-red-100 text-red-500 flex items-center justify-center mb-4 mx-auto">
+            <!-- Icon Container -->
+            <div id="confirm-icon-container" class="w-12 h-12 rounded-full bg-red-100 text-red-500 flex items-center justify-center mb-4 mx-auto transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
             </div>
             <h3 class="text-lg font-bold text-dark mb-2 text-center" id="confirm-title">Confirm Action</h3>
             <p class="text-gray-500 text-sm mb-6 text-center leading-relaxed" id="confirm-msg">Are you sure you want to proceed?</p>
             <div class="flex gap-3">
-                <button onclick="window.closeConfirm()" class="flex-1 px-4 py-2.5 rounded-xl text-gray-700 bg-gray-100 hover:bg-gray-200 font-bold transition">Cancel</button>
+                <button id="confirm-cancel-btn" onclick="window.closeConfirm()" class="flex-1 px-4 py-2.5 rounded-xl text-gray-700 bg-gray-100 hover:bg-gray-200 font-bold transition">Cancel</button>
                 <button id="confirm-yes-btn" class="flex-1 px-4 py-2.5 rounded-xl text-white bg-red-500 hover:bg-red-600 font-bold shadow-lg transition transform active:scale-95">Delete</button>
             </div>
         </div>
@@ -55,7 +56,7 @@
             <div class="w-16 h-16 bg-blue-50 text-ios_blue rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100 shadow-sm">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
             </div>
-            <h2 class="text-xl font-bold text-dark mb-2 tracking-tight">Who are you?</h2>
+            <h2 class="text-xl font-bold text-dark mb-2 tracking-tight">ENTER NAME</h2>
             <p class="text-gray-500 text-sm mb-6">Enter your name to join the session. This will be used for the activity log.</p>
             <form onsubmit="window.saveUserName(event)">
                 <input type="text" id="user-name-input" class="w-full text-center uppercase font-bold tracking-wider text-lg border-2 border-gray-200 focus:border-ios_blue rounded-xl py-3 px-4 mb-4 outline-none transition-colors" placeholder="YOUR NAME" required autocomplete="off">
@@ -288,8 +289,8 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                 </div>
             </button>
-            <button onclick="window.openModal(null)" class="flex items-center gap-2 bg-white text-dark px-4 py-2 rounded-full shadow-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
-                <span>Add Task</span>
+            <button id="fab-add-btn" onclick="window.openModal(null)" class="flex items-center gap-2 bg-white text-dark px-4 py-2 rounded-full shadow-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
+                <span id="fab-add-text">Add Task</span>
                 <div class="w-8 h-8 rounded-full bg-blue-100 text-ios_blue flex items-center justify-center">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                 </div>
