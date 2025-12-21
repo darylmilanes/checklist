@@ -645,7 +645,22 @@ document.getElementById('f_school').addEventListener('change', (e) => { const fo
 window.toggleCostingDetails = (val) => document.getElementById('costing-details').classList.toggle('hidden', !val);
 
 // CONFIRMATION DIALOG LOGIC
+// 1. Reset/Setup Confirm Modal Logic
+const resetModalState = () => {
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+    const yesBtn = document.getElementById('confirm-yes-btn');
+    const iconContainer = document.getElementById('confirm-icon-container');
+
+    // Default "Delete" Style
+    cancelBtn.classList.remove('hidden');
+    yesBtn.textContent = "Delete";
+    yesBtn.className = "flex-1 px-4 py-2.5 rounded-xl text-white bg-red-500 hover:bg-red-600 font-bold shadow-lg transition transform active:scale-95";
+    iconContainer.className = "w-12 h-12 rounded-full bg-red-100 text-red-500 flex items-center justify-center mb-4 mx-auto transition-colors";
+    iconContainer.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>';
+};
+
 window.showConfirm = (title, msg, callback) => {
+    resetModalState(); // Ensure it's in Delete mode
     const modal = document.getElementById('confirm-modal');
     const content = document.getElementById('confirm-modal-content');
     document.getElementById('confirm-title').textContent = title;
@@ -654,6 +669,33 @@ window.showConfirm = (title, msg, callback) => {
     
     modal.classList.remove('hidden');
     // Small delay to allow transition
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    });
+};
+
+// 2. New Alert Modal Logic (Reuses Confirm Modal structure)
+window.showAlert = (title, msg) => {
+    const modal = document.getElementById('confirm-modal');
+    const content = document.getElementById('confirm-modal-content');
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+    const yesBtn = document.getElementById('confirm-yes-btn');
+    const iconContainer = document.getElementById('confirm-icon-container');
+
+    // "Alert" Style
+    cancelBtn.classList.add('hidden');
+    yesBtn.textContent = "OK";
+    yesBtn.className = "flex-1 px-4 py-2.5 rounded-xl text-white bg-ios_blue hover:bg-blue-600 font-bold shadow-lg transition transform active:scale-95";
+    iconContainer.className = "w-12 h-12 rounded-full bg-blue-100 text-ios_blue flex items-center justify-center mb-4 mx-auto transition-colors";
+    iconContainer.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').textContent = msg;
+    pendingConfirmCallback = null; // No callback for alerts
+    
+    modal.classList.remove('hidden');
     requestAnimationFrame(() => {
         modal.classList.remove('opacity-0');
         content.classList.remove('scale-95');
@@ -751,7 +793,17 @@ window.openSchoolModal = (id) => {
 }
 document.getElementById('school-save-btn').addEventListener('click', async () => {
     const form = document.getElementById('school-form'); if(!form.checkValidity()) { form.reportValidity(); return; }
-    const sName = document.getElementById('sf_school').value;
+    const sName = document.getElementById('sf_school').value.trim();
+    
+    // --- DUPLICATE SCHOOL CHECK ---
+    // Check if school name exists (case-insensitive) and we are NOT editing that same school
+    const exists = allSchools.some(s => s.school.toLowerCase().trim() === sName.toLowerCase() && s.id !== editingSchoolId);
+    
+    if (exists) {
+        window.showAlert("Duplicate School", `The school "${sName}" already exists. Please update the existing entry instead.`);
+        return;
+    }
+
     const data = { school: sName, zone: document.getElementById('sf_zone').value, consultant: document.getElementById('sf_consultant').value };
     try { 
         if(editingSchoolId) { 
@@ -789,6 +841,18 @@ function toggleView(view) {
 
     currentView = view;
     
+    // UPDATE FAB BUTTON DYNAMICALLY BASED ON VIEW
+    const fabAddBtn = document.getElementById('fab-add-btn');
+    const fabAddText = document.getElementById('fab-add-text');
+    
+    if (view === 'zones') {
+        fabAddText.textContent = "Add School";
+        fabAddBtn.setAttribute('onclick', "window.openSchoolModal(null)");
+    } else {
+        fabAddText.textContent = "Add Task";
+        fabAddBtn.setAttribute('onclick', "window.openModal(null)");
+    }
+
     if(view === 'kanban' || view === 'table') {
         document.getElementById('table-search').value = viewFilters[view].search;
         document.getElementById('filter-type').value = viewFilters[view].type;
@@ -883,51 +947,82 @@ window.exportCSV = () => {
         return str;
     };
 
-    const headers = [
-        "Export Date", "Item Code", "Closing Date", "Zone", "Consultant", "School", 
-        "Contact Person 1 Name", "Contact Person 1 Designation", "Contact Person 1 Department", "Contact Person 1 Contact Number", "Contact Person 1 Email", 
-        "Contact Person 2 Name", "Contact Person 2 Designation", "Contact Person 2 Department", "Contact Person 2 Contact Number", "Contact Person 2 Email", 
-        "Programme Name", "Brand", "Status"
-    ];
-
-    const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-    // Map tasks to rows
-    const rows = allTasks.map(t => {
-        // Find detailed school info for Zone and Consultant separation
-        const schoolData = allSchools.find(s => s.school === t.school) || {};
+    if (currentView === 'zones') {
+        // --- ZONE EXPORT LOGIC (Count - School - Zone - Consultant) ---
+        const headers = ["No.", "School Name", "Zone", "Consultant"];
         
-        return [
-            today,
-            t.moe_code,
-            t.closing_date,
-            schoolData.zone || '',
-            schoolData.consultant || '', // Use the consultant from Schools DB for consistency, or parse t.assignment
-            t.school,
-            // Contact 1
-            t.contact1?.name, t.contact1?.des, t.contact1?.dept, t.contact1?.cont, t.contact1?.email,
-            // Contact 2
-            t.contact2?.name, t.contact2?.des, t.contact2?.dept, t.contact2?.cont, t.contact2?.email,
-            t.programme,
-            t.brand,
-            t.status
-        ].map(escapeCsv).join(',');
-    });
+        // Replicate the current sort logic from renderZonesTable for consistency
+        let schoolsToExport = [...allSchools];
+        schoolsToExport.sort((a, b) => { 
+            const valA = (a[schoolSort.key]||'').toLowerCase(); 
+            const valB = (b[schoolSort.key]||'').toLowerCase(); 
+            return valA < valB ? (schoolSort.dir==='asc'?-1:1) : (valA > valB ? (schoolSort.dir==='asc'?1:-1) : 0); 
+        });
 
-    const csvContent = [headers.join(','), ...rows].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+        const rows = schoolsToExport.map((s, index) => {
+            return [
+                index + 1,
+                s.school,
+                s.zone,
+                s.consultant
+            ].map(escapeCsv).join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        downloadCSV(csvContent, 'schools_zone_export');
+
+    } else {
+        // --- EXISTING TASK EXPORT LOGIC ---
+        const headers = [
+            "Export Date", "Item Code", "Closing Date", "Zone", "Consultant", "School", 
+            "Contact Person 1 Name", "Contact Person 1 Designation", "Contact Person 1 Department", "Contact Person 1 Contact Number", "Contact Person 1 Email", 
+            "Contact Person 2 Name", "Contact Person 2 Designation", "Contact Person 2 Department", "Contact Person 2 Contact Number", "Contact Person 2 Email", 
+            "Programme Name", "Brand", "Status"
+        ];
     
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `checklist_export_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    
+        // Map tasks to rows
+        const rows = allTasks.map(t => {
+            // Find detailed school info for Zone and Consultant separation
+            const schoolData = allSchools.find(s => s.school === t.school) || {};
+            
+            return [
+                today,
+                t.moe_code,
+                t.closing_date,
+                schoolData.zone || '',
+                schoolData.consultant || '', // Use the consultant from Schools DB for consistency, or parse t.assignment
+                t.school,
+                // Contact 1
+                t.contact1?.name, t.contact1?.des, t.contact1?.dept, t.contact1?.cont, t.contact1?.email,
+                // Contact 2
+                t.contact2?.name, t.contact2?.des, t.contact2?.dept, t.contact2?.cont, t.contact2?.email,
+                t.programme,
+                t.brand,
+                t.status
+            ].map(escapeCsv).join(',');
+        });
+    
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        downloadCSV(csvContent, 'checklist_export');
+    }
     
     // Close FAB menu after export
     window.toggleFabMenu();
 };
+
+const downloadCSV = (content, filenamePrefix) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filenamePrefix}_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
 // AUTO HIDE LOGIC FOR UI ELEMENTS
 document.addEventListener('click', (e) => {
