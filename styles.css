@@ -47,8 +47,8 @@ input[type="checkbox"] { accent-color: #007AFF; width: 1rem; height: 1rem; curso
 
 /* Progress Bar Styles */
 .progress-segment { height: 4px; flex: 1; border-radius: 2px; background-color: #E5E5EA; transition: background-color 0.3s ease; }
-.progress-segment.active-light { background-color: #86EFAC; }
-.progress-segment.active-solid { background-color: #22C55E; }
+.progress-segment.active-light { background-color: #dd5500; }
+.progress-segment.active-solid { background-color: #008430; }
 
 @media (max-width: 640px) {
     .kanban-column { min-width: 88vw; height: 72vh; }
@@ -79,10 +79,10 @@ td { vertical-align: middle; }
 /* TOGGLE SWITCH */
 .toggle-checkbox:checked {
     right: 0;
-    border-color: #68D391;
+    border-color: #00d24d;
 }
 .toggle-checkbox:checked + .toggle-label {
-    background-color: #68D391;
+    background-color: #00d24d;
 }
 .color-input-wrapper input[type="color"] {
     border: none; width: 30px; height: 30px; padding: 0; overflow: hidden; border-radius: 50%; cursor: pointer;
