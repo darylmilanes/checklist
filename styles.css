@@ -9,7 +9,14 @@ body {
 }
 
 ::-webkit-scrollbar { width: 0px; background: transparent; } 
-.kanban-column { min-width: 300px; }
+
+/* FIXED UNIFORM WIDTH FOR KANBAN COLUMNS */
+.kanban-column { 
+    min-width: 320px; 
+    width: 320px; 
+    max-width: 320px;
+}
+
 .glass { background-color: rgba(255, 255, 255, 0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); }
 
 /* UNIFIED FORM STYLES - Matches Inputs & Dropdowns */
@@ -31,7 +38,12 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), textarea, 
     background-size: 1.5em 1.5em;
 }
 
-/* Remove default arrow for inputs that are not selects and textareas */
+textarea {
+    resize: vertical; /* Ensure Trainers and other textareas are extendable */
+    min-height: 80px;
+}
+
+/* Remove default arrow for inputs that are not selects */
 input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), textarea {
     background-image: none;
 }
@@ -51,13 +63,14 @@ input[type="checkbox"] { accent-color: #007AFF; width: 1rem; height: 1rem; curso
 .progress-segment.active-solid { background-color: #008430; }
 
 @media (max-width: 640px) {
-    .kanban-column { min-width: 88vw; height: 72vh; }
+    .kanban-column { min-width: 88vw; width: 88vw; max-width: 88vw; height: 72vh; }
     #main-content { padding: 0.5rem !important; }
     h1 { font-size: 1.5rem !important; }
     .kanban-card { cursor: default !important; }
     .kanban-card-header { cursor: pointer !important; } 
     #toolbar { padding: 0.75rem 1rem; -webkit-overflow-scrolling: touch; }
 }
+
 .kanban-card.dragging { opacity: 0.5; cursor: grabbing; transform: scale(1.02); }
 .kanban-column-content.drag-over { background-color: rgba(0, 122, 255, 0.05); border-radius: 12px; box-shadow: inset 0 0 0 2px #007AFF; }
 #loading-overlay { position: fixed; inset: 0; background: rgba(242, 242, 247, 0.95); z-index: 50; display: flex; justify-content: center; align-items: center; flex-direction: column; transition: opacity 0.3s; }
@@ -90,18 +103,39 @@ td { vertical-align: middle; }
 .color-input-wrapper input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 .color-input-wrapper input[type="color"]::-webkit-color-swatch { border: none; }
 
-/* SPREADSHEET TABLE STYLES */
+/* SPREADSHEET TABLE STYLES (Advanced) */
 .spreadsheet-cell {
     outline: none;
-    cursor: text;
-    transition: all 0.15s ease;
+    cursor: cell; /* Crosshair cursor for sheet feel */
+    transition: all 0.1s ease;
+    user-select: none; /* Prevent native text highlight during range selection */
+    position: relative;
 }
-.spreadsheet-cell:focus {
-    background-color: #F0F9FF; /* light blue tint */
+
+/* Editing State (Double Click) */
+.spreadsheet-cell.editing {
+    background-color: #FFFFFF;
     box-shadow: inset 0 0 0 2px #007AFF;
+    cursor: text;
+    user-select: text;
+    z-index: 20;
+}
+
+/* Selection State (Single Click / Drag) */
+.spreadsheet-cell.selected {
+    background-color: rgba(0, 122, 255, 0.15); /* Light Blue */
+    border-color: rgba(0, 122, 255, 0.3);
+}
+
+/* Anchor cell (First clicked in a range) */
+.spreadsheet-cell.active-anchor {
+    background-color: #FFFFFF; /* Anchor usually stays white but has border */
+    box-shadow: inset 0 0 0 2px #007AFF; 
     z-index: 10;
 }
+
+/* Ensure empty cells have height so they can be clicked */
 .spreadsheet-cell:empty::before {
-    content: '';
+    content: '\00a0';
     display: inline-block;
 }
