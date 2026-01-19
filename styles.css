@@ -20,7 +20,7 @@ body {
 .glass { background-color: rgba(255, 255, 255, 0.85); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); }
 
 /* UNIFIED FORM STYLES - Matches Inputs & Dropdowns */
-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), textarea, select { 
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]), textarea, select { 
     appearance: none; -webkit-appearance: none; 
     background-color: #FFFFFF; 
     border: 1px solid #D1D5DB; /* border-gray-300 */
@@ -80,12 +80,25 @@ input[type="checkbox"] { accent-color: #007AFF; width: 1rem; height: 1rem; curso
 
 /* ALTERNATING ROWS FOR ZONES - BOTH MOBILE & DESKTOP */
 #zones-body tr { transition: background-color 0.15s ease; }
-#zones-body tr:nth-child(even) { background-color: #F9FAFB; } 
-#zones-body tr:nth-child(odd) { background-color: #FFFFFF; }
+/* Override striping with specific zone colors if applied */
+#zones-body tr:not([class*="bg-zone-"]) {
+    background-color: #FFFFFF;
+}
+#zones-body tr:not([class*="bg-zone-"]):nth-child(even) { background-color: #F9FAFB; } 
 
-/* Desktop Hover - Stronger specificity to override striping on hover */
+
+/* ZONE COLORS */
+.bg-zone-east { background-color: #fefe99 !important; }
+.bg-zone-north { background-color: #dafbd9 !important; }
+.bg-zone-south { background-color: #9acbfc !important; }
+.bg-zone-west { background-color: #cb98fe !important; }
+
+/* MISMATCH HEADER */
+.header-mismatch { background-color: #EF4444 !important; } /* Red-500 */
+
+/* Desktop Hover */
 @media (min-width: 641px) {
-    .zone-row:hover { background-color: #EBF8FF !important; } 
+    .zone-row:hover { filter: brightness(0.95); } 
 }
 td { vertical-align: middle; }
 
