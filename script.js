@@ -14,51 +14,53 @@ import { getFirestore, doc, addDoc, onSnapshot, collection, query, updateDoc, de
 const firebaseConfig = { apiKey: "AIzaSyAgDFeTSfSfYaUPoDLwmBuPUwmdtd9QuxM", authDomain: "checklist-c4255.firebaseapp.com", projectId: "checklist-c4255", storageBucket: "checklist-c4255.firebasestorage.app", messagingSenderId: "64837874160", appId: "1:64837874160:web:9fc4a131f16a33e9f3ed35" };
 const appId = "checklist-app-main";
 let db, auth, userId = null;
-let allTasks = [], allSchools = [], allConsultants = [], editingTaskId = null, editingSchoolId = null, activePopoverTaskId = null, currentView = 'kanban', schoolSort = { key: 'school', dir: 'asc' };
+let allTasks = [], allSchools = [], allConsultants = [], editingTaskId = null, editingSchoolId = null, activePopoverTaskId = null, currentView = 'kanban';
+// UPDATED: Default sort by Zone first
+let schoolSort = { key: 'zone', dir: 'asc' };
 let currentUserDisplay = sessionStorage.getItem('checklist_username') || '';
 let pendingConfirmCallback = null;
-
-// Spreadsheet State
 let isDragging = false;
 let selectionStart = null; // {r, c}
 let selectionEnd = null;   // {r, c}
 
 // Prevent iOS Zoom on Gesture
-document.addEventListener('gesturestart', function(e) {
-    e.preventDefault();
-});
+document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
 
 // View State for Independent Filtering
 const viewFilters = {
     kanban: { search: '', type: 'all', ec: 'all', status: 'all' },
     table: { search: '', type: 'all', ec: 'all', status: 'all' },
-    zones: { search: '' }
+    zones: { search: '' } 
 };
 
-// Legacy Color Map for migration
+// Legacy Color Map & Zone Colors
 const LEGACY_COLORS = { "Sarah": "#A855F7", "Martin": "#3B82F6", "Krystle": "#EC4899", "Charlynn": "#10B981", "Sapnaa": "#6B7280", "Yuniza": "#EAB308" };
+// CSS classes mapped to Zone names
+const ZONE_COLORS = { "East": "bg-zone-east", "North": "bg-zone-north", "South": "bg-zone-south", "West": "bg-zone-west" };
 
 const KANBAN_STATUSES = ["In Progress", "For Submission", "Pending Award", "Awarded", "Not Awarded", "No Award", "Skipped"];
 const PROGRESS_ITEMS = [{ id: 'proposal', label: 'Programme Proposal' }, { id: 'annex_b', label: 'Annex B - Price Proposal' }, { id: 'annex_f', label: 'Annex F - Instructor Deployment' }, { id: 'outline', label: 'Programme Outline' }, { id: 'track_record', label: 'Programme Track Record' }, { id: 'trainers_files', label: 'Trainers\' Files' }, { id: 'gebiz', label: 'GeBIZ Tracker Update' }, { id: 'email', label: 'Email Follow-up' }];
 
 const formatDate = (dateStr) => { if (!dateStr) return '-'; try { return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); } catch (e) { return dateStr; } };
 const getProgressState = (task) => { const p = task.progress || {}; const annexB = p.annex_b || (task.cost_val && task.cost_val.trim().length > 0); const firstSix = [p.proposal, annexB, p.annex_f, p.outline, p.track_record, p.trainers_files].every(Boolean); const bothLastTwo = [p.gebiz, p.email].every(Boolean); return { proposal: p.proposal, annex_b: annexB, annex_f: p.annex_f, outline: p.outline, track_record: p.track_record, trainers_files: p.trainers_files, gebiz: p.gebiz, email: p.email, allFirstSix: firstSix, bothLastTwo: bothLastTwo }; };
+const getTaskLabel = (t) => { const brand = t.brand === 'Vivarch Enrichment' ? 'Vivarch' : (t.brand || ''); if (!t.assignment && !brand) return 'Unassigned'; if (!t.assignment) return brand; if (!brand) return t.assignment; return `${t.assignment}, ${brand}`; };
 
-// Helper to get formatted assignment label with Brand
-const getTaskLabel = (t) => {
-    const brand = t.brand === 'Vivarch Enrichment' ? 'Vivarch' : (t.brand || '');
-    if (!t.assignment && !brand) return 'Unassigned';
-    if (!t.assignment) return brand;
-    if (!brand) return t.assignment;
-    return `${t.assignment}, ${brand}`;
+// --- HELPER: ROBUST NAME NORMALIZATION ---
+// Removes extra spaces, invisible chars, and trims.
+const cleanStr = (str) => str ? str.toString().trim().replace(/\s+/g, ' ').replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
+
+// Generates a strict comparison key (lowercase, alpha-numeric only to prevent duplicates like "Krystle" vs "Krystle.")
+const normalizeKey = (str) => {
+    const s = cleanStr(str).toLowerCase();
+    // Replace anything that is not a letter or number (e.g. remove spaces, dots, hyphens for key comparison)
+    return s.replace(/[^a-z0-9]/g, '');
 };
 
-// --- NEW COLOR LOGIC ---
 function getConsultantStyles(name) {
-    const consultant = allConsultants.find(c => c.name === name);
-    if (!consultant || !consultant.active) {
-        return { headerBg: '#9CA3AF', rowBg: '#F3F4F6', hoverBg: 'hover:bg-gray-100', dotColor: '#D1D5DB' };
-    }
+    const key = normalizeKey(name);
+    // Find consultant by matching normalized key
+    const consultant = allConsultants.find(c => normalizeKey(c.name) === key);
+    if (!consultant || !consultant.active) return { headerBg: '#9CA3AF', rowBg: '#F3F4F6', hoverBg: 'hover:bg-gray-100', dotColor: '#D1D5DB' };
     return { headerBg: consultant.color, rowBg: `${consultant.color}40`, hoverBg: '', dotColor: consultant.color };
 }
 
@@ -67,10 +69,8 @@ async function initApp() {
     await signInAnonymously(auth);
     onAuthStateChanged(auth, (user) => {
         if (user) { 
-            userId = user.uid; 
-            document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none'); 
-            if(!currentUserDisplay) document.getElementById('name-modal').classList.remove('hidden');
-            else { document.getElementById('user-badge').textContent = currentUserDisplay; initListeners(); }
+            userId = user.uid; document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none'); 
+            if(!currentUserDisplay) document.getElementById('name-modal').classList.remove('hidden'); else { document.getElementById('user-badge').textContent = currentUserDisplay; initListeners(); }
             toggleView(currentView);
         }
     });
@@ -91,22 +91,20 @@ async function logAction(message) {
 
 function initListeners() {
     onSnapshot(query(collection(db, `artifacts/${appId}/public/data/tasks`)), (s) => { allTasks = s.docs.map(d => ({ id: d.id, ...d.data() })); refreshView(); });
-    onSnapshot(query(collection(db, `artifacts/${appId}/public/data/schools`), orderBy('school')), (s) => { allSchools = s.docs.map(d => ({ id: d.id, ...d.data() })); populateSchoolDatalist(); if(currentView === 'zones') renderZonesTable(); });
-    onSnapshot(query(collection(db, `artifacts/${appId}/public/data/consultants`), orderBy('name')), (s) => { 
-        allConsultants = s.docs.map(d => ({ id: d.id, ...d.data() }));
-        if(allConsultants.length === 0) seedConsultants(); else { updateConsultantUI(); refreshView(); }
+    onSnapshot(query(collection(db, `artifacts/${appId}/public/data/schools`), orderBy('school')), (s) => { 
+        allSchools = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+        populateSchoolDatalist(); 
+        updateConsultantUI(); // Ensure dropdowns update when schools import
+        if(currentView === 'zones') window.renderZonesTable(); 
     });
-    
+    onSnapshot(query(collection(db, `artifacts/${appId}/public/data/consultants`), orderBy('name')), (s) => { 
+        allConsultants = s.docs.map(d => ({ id: d.id, ...d.data() })); 
+        if(allConsultants.length === 0) seedConsultants(); else { updateConsultantUI(); refreshView(); } 
+    });
     onSnapshot(query(collection(db, `artifacts/${appId}/public/data/notifications`), orderBy('timestamp', 'desc'), limit(50)), (s) => {
         const list = document.getElementById('notif-list'); const badge = document.getElementById('notif-badge'); list.innerHTML = '';
         if(s.empty) { list.innerHTML = '<div class="p-8 text-center text-gray-400 text-xs">No recent activity.</div>'; badge.classList.add('hidden'); } 
-        else { 
-            badge.classList.remove('hidden'); 
-            s.docs.forEach(d => {
-                const n = d.data(); const time = n.timestamp ? new Date(n.timestamp.toDate()).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'}) : 'Just now';
-                list.innerHTML += `<div class="px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition"><div class="flex justify-between items-start mb-0.5"><span class="text-xs font-bold text-dark">${n.user}</span><span class="text-[10px] text-gray-400">${time}</span></div><p class="text-xs text-gray-600 leading-snug">${n.message}</p></div>`;
-            });
-        }
+        else { badge.classList.remove('hidden'); s.docs.forEach(d => { const n = d.data(); const time = n.timestamp ? new Date(n.timestamp.toDate()).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'}) : 'Just now'; list.innerHTML += `<div class="px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition"><div class="flex justify-between items-start mb-0.5"><span class="text-xs font-bold text-dark">${n.user}</span><span class="text-[10px] text-gray-400">${time}</span></div><p class="text-xs text-gray-600 leading-snug">${n.message}</p></div>`; }); }
     });
 }
 
@@ -116,20 +114,65 @@ window.toggleNotifications = () => { const pop = document.getElementById('notif-
 async function seedConsultants() { const batch = writeBatch(db); const defaults = ["Sarah", "Martin", "Krystle", "Charlynn", "Sapnaa", "Yuniza"]; defaults.forEach(name => { batch.set(doc(collection(db, `artifacts/${appId}/public/data/consultants`)), { name, color: LEGACY_COLORS[name] || '#6B7280', active: true, createdAt: serverTimestamp() }); }); await batch.commit(); }
 
 function updateConsultantUI() {
-    const populateSelect = (targetId, showAll) => {
-        const select = document.getElementById(targetId); if(!select) return;
-        const currentValue = select.value; select.innerHTML = '';
-        const defaultOpt = document.createElement('option'); defaultOpt.value = (targetId.includes('filter')) ? 'all' : ''; defaultOpt.textContent = (targetId.includes('filter')) ? 'All Consultants' : 'Unassigned'; select.appendChild(defaultOpt);
-        [...allConsultants].sort((a,b) => (a.active === b.active) ? a.name.localeCompare(b.name) : (a.active ? -1 : 1)).forEach(c => { if (showAll || c.active) { const opt = document.createElement('option'); opt.value = c.name; opt.textContent = c.name; select.appendChild(opt); } });
-        if(currentValue) select.value = currentValue;
-    };
-    populateSelect('filter-ec', true); populateSelect('mob-filter-ec', true); populateSelect('sf_consultant', false); 
+    // Deduplicate names using normalized keys (fixes duplicate "Krystle" vs "Krystle " vs "Krystle.")
+    const uniqueNamesMap = new Map();
 
-    const activeList = document.getElementById('consultant-list-active'); const inactiveList = document.getElementById('consultant-list-inactive'); activeList.innerHTML = ''; inactiveList.innerHTML = '';
-    allConsultants.forEach(c => {
-        const row = `<tr><td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${c.name}</td><td class="px-4 py-3 whitespace-nowrap"><div class="color-input-wrapper"><input type="color" value="${c.color}" onchange="window.updateConsultantColor('${c.id}', this.value)" title="Change Color"></div></td><td class="px-4 py-3 whitespace-nowrap text-right"><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" value="" class="sr-only peer" ${c.active ? 'checked' : ''} onchange="window.toggleConsultantStatus('${c.id}', this.checked)"><div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-ios_blue"></div></label></td></tr>`;
-        if(c.active) activeList.innerHTML += row; else inactiveList.innerHTML += row;
-    });
+    const addName = (rawName) => {
+        if(!rawName) return;
+        const clean = cleanStr(rawName);
+        if(!clean) return;
+        
+        const key = normalizeKey(clean);
+        
+        // Skip if the name is effectively empty after key normalization
+        if (key.length === 0) return;
+
+        // Store the "cleanest" version of the name.
+        // Priority: If we already have a name, keep it (assuming first source is better/canonical)
+        // Note: allConsultants (defined colors) are processed first below, so they take precedence.
+        if(!uniqueNamesMap.has(key)) {
+            uniqueNamesMap.set(key, clean);
+        }
+    };
+
+    allConsultants.forEach(c => { if(c.active) addName(c.name); });
+    allSchools.forEach(s => { if(s.consultant) addName(s.consultant); });
+    
+    const sortedNames = Array.from(uniqueNamesMap.values()).sort();
+
+    const populateSelect = (targetId) => {
+        const select = document.getElementById(targetId); if(!select) return;
+        const currentValue = select.value; 
+        select.innerHTML = '';
+        
+        const defaultOpt = document.createElement('option'); 
+        const isMainFilter = targetId === 'filter-ec' || targetId === 'mob-filter-ec';
+        defaultOpt.value = isMainFilter ? 'all' : ''; 
+        defaultOpt.textContent = isMainFilter ? 'All Consultants' : (targetId === 'zone-filter-ec' ? 'All ECs' : 'Unassigned'); 
+        select.appendChild(defaultOpt);
+        
+        sortedNames.forEach(name => { 
+            const opt = document.createElement('option'); 
+            opt.value = name; 
+            opt.textContent = name; 
+            select.appendChild(opt); 
+        });
+        
+        // Try to restore value, normalized
+        if(currentValue && currentValue !== 'all') {
+             // Find the matching normalized name in the new options
+             const currentKey = normalizeKey(currentValue);
+             const matchingName = uniqueNamesMap.get(currentKey);
+             if(matchingName) select.value = matchingName;
+        } else if (currentValue === 'all') {
+            select.value = 'all';
+        }
+    };
+    
+    populateSelect('filter-ec'); 
+    populateSelect('mob-filter-ec'); 
+    populateSelect('sf_consultant'); 
+    populateSelect('zone-filter-ec');
 }
 
 window.addConsultant = async () => { const name = document.getElementById('new-consultant-name').value.trim(); if(!name) return; await addDoc(collection(db, `artifacts/${appId}/public/data/consultants`), { name, color: document.getElementById('new-consultant-color').value, active: true, createdAt: serverTimestamp() }); logAction(`Added consultant: ${name}`); document.getElementById('new-consultant-name').value = ''; showToast("Consultant added"); }
@@ -147,7 +190,7 @@ window.setMobileFilter = (key, value) => { document.getElementById(`filter-${key
 window.refreshView = function() {
     if(currentView === 'kanban' || currentView === 'table') { viewFilters[currentView].search = document.getElementById('table-search').value; viewFilters[currentView].type = document.getElementById('filter-type').value; viewFilters[currentView].ec = document.getElementById('filter-ec').value; viewFilters[currentView].status = document.getElementById('filter-status').value; }
     else if (currentView === 'zones') { viewFilters.zones.search = document.getElementById('zones-search').value; }
-    if(currentView === 'kanban') renderKanban(); else if (currentView === 'table') renderTable(); else if (currentView === 'zones') renderZonesTable();
+    if(currentView === 'kanban') renderKanban(); else if (currentView === 'table') renderTable(); else if (currentView === 'zones') window.renderZonesTable();
 }
 
 function renderKanban() {
@@ -166,11 +209,11 @@ function createKanbanColumn(status, tasks) {
 }
 
 function createKanbanCard(task) {
-    const styles = getConsultantStyles(task.assignment ? task.assignment.split(',')[0].trim() : '');
+    const ec = task.assignment ? task.assignment.split(',')[0].trim() : '';
+    const styles = getConsultantStyles(ec);
     const ps = getProgressState(task);
     const segs = PROGRESS_ITEMS.map((item, i) => `<div class="progress-segment ${i<6?(ps.allFirstSix && ps[item.id]?'active-solid':(ps[item.id]?'active-light':'')):(ps.bothLastTwo && ps[item.id]?'active-solid':(ps[item.id]?'active-light':''))}"></div>`).join('');
     
-    // Updated onclick to open View Modal
     const card = document.createElement('div');
     card.className = `kanban-card bg-white rounded-xl shadow-sm border border-gray-100 cursor-grab hover:shadow-ios-hover transition-all transform hover:-translate-y-1 overflow-hidden relative`;
     card.setAttribute('draggable', 'true'); card.ondragstart = (e) => e.dataTransfer.setData("text", task.id);
@@ -199,7 +242,8 @@ function renderTable() {
     const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
     const tasks = filterTasks(allTasks).sort((a, b) => (KANBAN_STATUSES.indexOf(a.status) - KANBAN_STATUSES.indexOf(b.status)) || (new Date(a.closing_date||'9999-12-31') - new Date(b.closing_date||'9999-12-31')));
     tasks.forEach(task => {
-        const styles = getConsultantStyles(task.assignment ? task.assignment.split(',')[0].trim() : '');
+        const ec = task.assignment ? task.assignment.split(',')[0].trim() : '';
+        const styles = getConsultantStyles(ec);
         const ps = getProgressState(task);
         const segs = PROGRESS_ITEMS.map((item, i) => `<div class="progress-segment ${i<6?(ps.allFirstSix && ps[item.id]?'active-solid':(ps[item.id]?'active-light':'')):(ps.bothLastTwo && ps[item.id]?'active-solid':(ps[item.id]?'active-light':''))}"></div>`).join('');
         const tr = document.createElement('tr');
@@ -213,35 +257,268 @@ function renderTable() {
     });
 }
 
-function renderZonesTable() {
+window.renderZonesTable = () => {
     const tbody = document.getElementById('zones-body'); tbody.innerHTML = '';
-    document.getElementById('zones-count').textContent = `${allSchools.length} Schools`;
     const search = document.getElementById('zones-search').value.toLowerCase();
+    const zoneFilter = document.getElementById('zone-filter-zone').value;
+    const ecFilter = document.getElementById('zone-filter-ec').value;
+    const ecFilterKey = normalizeKey(ecFilter); // Normalize the selected filter
+    
     const clearBtn = document.getElementById('zones-search-clear'); if(search.length > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden');
 
-    let filtered = allSchools.filter(s => !search || s.school.toLowerCase().includes(search) || s.zone.toLowerCase().includes(search) || s.consultant.toLowerCase().includes(search));
-    filtered.sort((a, b) => { const valA = (a[schoolSort.key]||'').toLowerCase(); const valB = (b[schoolSort.key]||'').toLowerCase(); return valA < valB ? (schoolSort.dir==='asc'?-1:1) : (valA > valB ? (schoolSort.dir==='asc'?1:-1) : 0); });
+    let filtered = allSchools.filter(s => {
+        // Use cleanStr to normalize comparisons
+        const sConsultantClean = cleanStr(s.consultant);
+        const matchesSearch = !search || s.school.toLowerCase().includes(search) || (s.zone||'').toLowerCase().includes(search) || sConsultantClean.toLowerCase().includes(search);
+        const matchesZone = !zoneFilter || s.zone === zoneFilter;
+        // Normalize comparison for EC filter
+        const matchesEC = !ecFilter || normalizeKey(sConsultantClean) === ecFilterKey; 
+        return matchesSearch && matchesZone && matchesEC;
+    });
+    
+    document.getElementById('zones-count').textContent = `${filtered.length} Schools`;
+    
+    // UPDATED SORT LOGIC (School A-Z secondary sort)
+    filtered.sort((a, b) => {
+        const key = schoolSort.key;
+        const dir = schoolSort.dir === 'asc' ? 1 : -1;
+        const valA = cleanStr(a[key]).toLowerCase();
+        const valB = cleanStr(b[key]).toLowerCase();
+        
+        if (valA < valB) return -1 * dir;
+        if (valA > valB) return 1 * dir;
+        
+        // Secondary Sort: School Name Ascending
+        if (key !== 'school') {
+            const schoolA = cleanStr(a.school).toLowerCase();
+            const schoolB = cleanStr(b.school).toLowerCase();
+            if (schoolA < schoolB) return -1;
+            if (schoolA > schoolB) return 1;
+        }
+        
+        return 0;
+    });
+    
     filtered.forEach((s, idx) => {
-        const styles = getConsultantStyles(s.consultant);
-        const tr = document.createElement('tr'); tr.className = "border-b border-gray-50 transition-colors group zone-row cursor-pointer";
+        const zoneClass = ZONE_COLORS[s.zone] || '';
+        
+        const tr = document.createElement('tr'); 
+        tr.className = `border-b border-gray-50 transition-colors group zone-row cursor-pointer ${zoneClass}`;
         tr.onclick = () => window.openSchoolModal(s.id); 
-        tr.innerHTML = `<td class="px-6 py-3 text-xs text-gray-400 font-mono align-middle">${idx+1}</td><td class="px-6 py-3 text-sm font-bold text-dark align-middle">${s.school}</td><td class="px-6 py-3 align-middle"><span class="px-2 py-1 rounded bg-gray-100 text-xs font-medium text-gray-600 border border-gray-200">${s.zone}</span></td><td class="px-6 py-3 text-sm text-gray-600 align-middle flex items-center gap-2"><span class="w-2 h-2 rounded-full" style="background-color:${styles.dotColor}"></span>${s.consultant || 'Unassigned'}</td>`;
+        tr.innerHTML = `
+            <td class="px-6 py-3 text-xs text-gray-500 font-mono align-middle">${idx+1}</td>
+            <td class="px-6 py-3 text-sm font-bold text-dark align-middle">${s.school}</td>
+            <td class="px-6 py-3 align-middle"><span class="px-2 py-1 rounded bg-white/50 text-xs font-medium text-gray-700 border border-black/10">${s.zone}</span></td>
+            <td class="px-6 py-3 text-sm text-gray-600 align-middle">${s.consultant || 'Unassigned'}</td>
+            <td class="px-6 py-3 text-sm text-gray-500 align-middle">${s.aec || '-'}</td>
+        `;
         tbody.appendChild(tr);
     });
+    
+    // Update sort icons visual state
+    ['school', 'zone', 'consultant'].forEach(k => {
+        const icon = document.getElementById(`sort-icon-${k}`);
+        if(schoolSort.key === k) {
+            icon.classList.remove('text-gray-300');
+            icon.classList.add('text-ios_blue');
+        } else {
+            icon.classList.remove('text-ios_blue');
+            icon.classList.add('text-gray-300');
+        }
+    });
+};
+document.getElementById('zones-search').addEventListener('input', window.renderZonesTable);
+window.clearZonesSearch = () => { document.getElementById('zones-search').value = ''; window.renderZonesTable(); }
+window.sortSchools = (key) => { 
+    if (schoolSort.key === key) schoolSort.dir = schoolSort.dir === 'asc' ? 'desc' : 'asc'; 
+    else { schoolSort.key = key; schoolSort.dir = 'asc'; } 
+    window.renderZonesTable(); 
 }
-document.getElementById('zones-search').addEventListener('input', renderZonesTable);
-window.clearZonesSearch = () => { document.getElementById('zones-search').value = ''; renderZonesTable(); }
-window.sortSchools = (key) => { ['school', 'zone', 'consultant'].forEach(k => document.getElementById(`sort-icon-${k}`).classList.replace('text-ios_blue', 'text-gray-300')); if (schoolSort.key === key) schoolSort.dir = schoolSort.dir === 'asc' ? 'desc' : 'asc'; else { schoolSort.key = key; schoolSort.dir = 'asc'; } document.getElementById(`sort-icon-${key}`).classList.replace('text-gray-300', 'text-ios_blue'); renderZonesTable(); }
+
+// --- DATA SUMMARY LOGIC ---
+window.showAllocationSummary = () => {
+    const summary = {};
+    const zoneCounts = { "East": 0, "North": 0, "South": 0, "West": 0 };
+    let unassignedEC = 0;
+    let unassignedAEC = 0;
+
+    allSchools.forEach(s => {
+        const ec = cleanStr(s.consultant);
+        const aec = cleanStr(s.aec);
+        const zone = s.zone || 'Unknown';
+
+        // EC Counts
+        if (ec) {
+            // Use normalized key for counting to avoid duplicates in stats
+            const ecKey = normalizeKey(ec); 
+            // Store display name from first occurrence if not set
+            const displayName = ec; 
+            // We need a map for stats to be accurate
+            if(!summary[ecKey]) summary[ecKey] = { name: displayName, count: 0 };
+            summary[ecKey].count++;
+        } else {
+            unassignedEC++;
+        }
+
+        // AEC Counts - Updated Logic for Hyphen
+        if (!aec || aec === '-') unassignedAEC++;
+
+        // Zone Counts
+        if (zoneCounts.hasOwnProperty(zone)) zoneCounts[zone]++;
+    });
+
+    let html = `<div class="space-y-6">`;
+    
+    // 1. Schools per EC
+    html += `<div><h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Schools per Consultant</h4><div class="grid grid-cols-2 sm:grid-cols-3 gap-3">`;
+    
+    // Sort summary by display name
+    const sortedSummary = Object.values(summary).sort((a,b) => a.name.localeCompare(b.name));
+    
+    sortedSummary.forEach(item => {
+         html += `<div class="bg-gray-50 p-3 rounded-lg border border-gray-100 flex justify-between items-center"><span class="text-sm font-semibold text-gray-700">${item.name}</span><span class="text-sm font-bold text-ios_blue">${item.count}</span></div>`;
+    });
+    html += `</div></div>`;
+
+    // 2. Schools per Zone
+    html += `<div><h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Schools per Zone</h4><div class="grid grid-cols-2 sm:grid-cols-4 gap-3">`;
+    Object.keys(zoneCounts).forEach(z => {
+        const colorClass = ZONE_COLORS[z] || 'bg-gray-50';
+         html += `<div class="${colorClass} p-3 rounded-lg border border-gray-100 flex justify-between items-center"><span class="text-sm font-semibold text-gray-700">${z}</span><span class="text-sm font-bold text-dark">${zoneCounts[z]}</span></div>`;
+    });
+    html += `</div></div>`;
+
+    // 3. Unassigned
+    html += `<div><h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Unassigned</h4>
+             <div class="flex gap-4">
+                <div class="flex-1 bg-red-50 p-3 rounded-lg border border-red-100 flex flex-col items-center justify-center">
+                    <span class="text-2xl font-bold text-red-600">${unassignedEC}</span>
+                    <span class="text-xs text-red-400 font-medium">No EC Assigned</span>
+                </div>
+                <div class="flex-1 bg-orange-50 p-3 rounded-lg border border-orange-100 flex flex-col items-center justify-center">
+                    <span class="text-2xl font-bold text-orange-600">${unassignedAEC}</span>
+                    <span class="text-xs text-orange-400 font-medium">No AEC Assigned</span>
+                </div>
+             </div></div>`;
+    
+    html += `</div>`;
+    document.getElementById('summary-content').innerHTML = html;
+    document.getElementById('summary-modal').classList.remove('hidden');
+};
+
+
+// --- IMPORT LOGIC ---
+window.verifyImportPassword = () => {
+    const p = document.getElementById('import-password').value;
+    if(p === "DARYL") {
+        document.getElementById('password-modal').classList.add('hidden');
+        window.triggerImport();
+    } else {
+        showToast("Incorrect Password", "error");
+    }
+    document.getElementById('import-password').value = '';
+};
+
+window.triggerImport = () => {
+    let input = document.getElementById('csv-upload-input');
+    if (!input) {
+        input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'csv-upload-input';
+        input.accept = '.csv';
+        input.style.display = 'none';
+        input.onchange = (e) => window.handleCSVUpload(e.target);
+        document.body.appendChild(input);
+    }
+    input.click();
+};
+
+window.handleCSVUpload = (input) => {
+    const file = input.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const text = e.target.result;
+        // Basic CSV Parsing (assuming Schools, Zone, EC, AEC)
+        const rows = text.split(/\r\n|\n/).map(r => r.split(',')).filter(r => r.length > 1);
+        
+        // Remove header if it exists
+        if(rows[0][0].toLowerCase().includes('school')) rows.shift();
+        
+        try {
+            document.getElementById('loading-overlay').classList.remove('opacity-0', 'pointer-events-none');
+            
+            // 1. Delete all existing schools (Batch)
+            const snap = await getDocs(collection(db, `artifacts/${appId}/public/data/schools`));
+            const batchSize = 400; 
+            let batch = writeBatch(db);
+            let count = 0;
+            
+            snap.docs.forEach((d) => {
+                batch.delete(d.ref);
+                count++;
+                if (count >= batchSize) { batch.commit(); batch = writeBatch(db); count = 0; }
+            });
+            await batch.commit();
+
+            // 2. Add new schools
+            batch = writeBatch(db);
+            count = 0;
+            rows.forEach(row => {
+                // row[0]=School, row[1]=Zone, row[2]=EC, row[3]=AEC 
+                const clean = (val) => val ? val.replace(/"/g, '').trim() : '';
+                const schoolName = clean(row[0]);
+                if(schoolName) {
+                    const ref = doc(collection(db, `artifacts/${appId}/public/data/schools`));
+                    batch.set(ref, { 
+                        school: schoolName, 
+                        zone: clean(row[1]), 
+                        consultant: clean(row[2]), 
+                        aec: clean(row[3])
+                    });
+                    count++;
+                    if (count >= batchSize) { batch.commit(); batch = writeBatch(db); count = 0; }
+                }
+            });
+            await batch.commit();
+            
+            logAction(`Imported new Zone Allocation DB`);
+            showToast("Database Updated Successfully");
+        } catch(err) {
+            console.error(err);
+            showToast("Import Failed", "error");
+        } finally {
+             document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none');
+             input.value = ''; // Reset
+        }
+    };
+    reader.readAsText(file);
+};
 
 function filterTasks(tasks) {
     const search = document.getElementById('table-search').value.toLowerCase();
-    const type = document.getElementById('filter-type').value; const ec = document.getElementById('filter-ec').value; const status = document.getElementById('filter-status').value; 
+    const type = document.getElementById('filter-type').value; 
+    const ec = document.getElementById('filter-ec').value; 
+    const ecKey = normalizeKey(ec); // Normalize filter
+    const status = document.getElementById('filter-status').value; 
+    
     return tasks.filter(t => {
         const fullText = [t.school, t.programme, t.type, t.moe_code, t.contact1?.name, t.contact1?.email, t.contact1?.cont, t.contact2?.name, t.contact2?.email, t.contact2?.cont, t.contact3?.name, t.contact3?.email, t.contact3?.cont].filter(Boolean).join(' ').toLowerCase();
+        
+        // Normalize task assignment check
+        let assignmentMatch = false;
+        if(ec === 'all') assignmentMatch = true;
+        else if (t.assignment) {
+             const assignmentParts = t.assignment.split(',').map(p => normalizeKey(p));
+             if(assignmentParts.includes(ecKey)) assignmentMatch = true;
+             // Also check raw inclusion for legacy
+             if(t.assignment.toLowerCase().includes(ec.toLowerCase())) assignmentMatch = true;
+        }
+
         if (search && !fullText.includes(search)) return false;
         if (type !== 'all' && t.type !== type) return false;
         if (status !== 'all' && t.status !== status) return false;
-        if (ec !== 'all' && (!t.assignment || !t.assignment.includes(ec))) return false;
+        if (!assignmentMatch) return false;
         return true;
     });
 }
@@ -560,88 +837,236 @@ document.getElementById('cancel-btn').addEventListener('click', () => document.g
 document.getElementById('f_school').addEventListener('change', (e) => { const found = allSchools.find(s => s.school === e.target.value); document.getElementById('f_assignment').value = found ? `${found.consultant}, ${found.zone}` : ''; });
 window.toggleCostingDetails = (val) => document.getElementById('costing-details').classList.toggle('hidden', !val);
 
-// --- SAVE / DELETE / CONFIRM LOGIC (Existing) ---
+// CONFIRMATION DIALOG LOGIC
+// 1. Reset/Setup Confirm Modal Logic
 const resetModalState = () => {
-    const cancelBtn = document.getElementById('confirm-cancel-btn'); const yesBtn = document.getElementById('confirm-yes-btn'); const iconContainer = document.getElementById('confirm-icon-container');
-    cancelBtn.classList.remove('hidden'); yesBtn.textContent = "Delete"; yesBtn.className = "flex-1 px-4 py-2.5 rounded-xl text-white bg-red-500 hover:bg-red-600 font-bold shadow-lg transition transform active:scale-95";
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+    const yesBtn = document.getElementById('confirm-yes-btn');
+    const iconContainer = document.getElementById('confirm-icon-container');
+
+    // Default "Delete" Style
+    cancelBtn.classList.remove('hidden');
+    yesBtn.textContent = "Delete";
+    yesBtn.className = "flex-1 px-4 py-2.5 rounded-xl text-white bg-red-500 hover:bg-red-600 font-bold shadow-lg transition transform active:scale-95";
     iconContainer.className = "w-12 h-12 rounded-full bg-red-100 text-red-500 flex items-center justify-center mb-4 mx-auto transition-colors";
     iconContainer.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>';
 };
 
 window.showConfirm = (title, msg, callback) => {
-    resetModalState(); const modal = document.getElementById('confirm-modal'); const content = document.getElementById('confirm-modal-content');
-    document.getElementById('confirm-title').textContent = title; document.getElementById('confirm-msg').textContent = msg; pendingConfirmCallback = callback;
-    modal.classList.remove('hidden'); requestAnimationFrame(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); content.classList.add('scale-100'); });
+    resetModalState(); // Ensure it's in Delete mode
+    const modal = document.getElementById('confirm-modal');
+    const content = document.getElementById('confirm-modal-content');
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').textContent = msg;
+    pendingConfirmCallback = callback;
+    
+    modal.classList.remove('hidden');
+    // Small delay to allow transition
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    });
 };
+
+// 2. New Alert Modal Logic (Reuses Confirm Modal structure)
 window.showAlert = (title, msg) => {
-    const modal = document.getElementById('confirm-modal'); const content = document.getElementById('confirm-modal-content'); const cancelBtn = document.getElementById('confirm-cancel-btn'); const yesBtn = document.getElementById('confirm-yes-btn'); const iconContainer = document.getElementById('confirm-icon-container');
-    cancelBtn.classList.add('hidden'); yesBtn.textContent = "OK"; yesBtn.className = "flex-1 px-4 py-2.5 rounded-xl text-white bg-ios_blue hover:bg-blue-600 font-bold shadow-lg transition transform active:scale-95";
+    const modal = document.getElementById('confirm-modal');
+    const content = document.getElementById('confirm-modal-content');
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+    const yesBtn = document.getElementById('confirm-yes-btn');
+    const iconContainer = document.getElementById('confirm-icon-container');
+
+    // "Alert" Style
+    cancelBtn.classList.add('hidden');
+    yesBtn.textContent = "OK";
+    yesBtn.className = "flex-1 px-4 py-2.5 rounded-xl text-white bg-ios_blue hover:bg-blue-600 font-bold shadow-lg transition transform active:scale-95";
     iconContainer.className = "w-12 h-12 rounded-full bg-blue-100 text-ios_blue flex items-center justify-center mb-4 mx-auto transition-colors";
     iconContainer.innerHTML = '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-    document.getElementById('confirm-title').textContent = title; document.getElementById('confirm-msg').textContent = msg; pendingConfirmCallback = null;
-    modal.classList.remove('hidden'); requestAnimationFrame(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); content.classList.add('scale-100'); });
+
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').textContent = msg;
+    pendingConfirmCallback = null; // No callback for alerts
+    
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    });
 };
-window.closeConfirm = () => { const modal = document.getElementById('confirm-modal'); const content = document.getElementById('confirm-modal-content'); modal.classList.add('opacity-0'); content.classList.remove('scale-100'); content.classList.add('scale-95'); setTimeout(() => { modal.classList.add('hidden'); pendingConfirmCallback = null; }, 200); };
-document.getElementById('confirm-yes-btn').addEventListener('click', () => { if (pendingConfirmCallback) pendingConfirmCallback(); window.closeConfirm(); });
+
+window.closeConfirm = () => {
+    const modal = document.getElementById('confirm-modal');
+    const content = document.getElementById('confirm-modal-content');
+    modal.classList.add('opacity-0');
+    content.classList.remove('scale-100');
+    content.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        pendingConfirmCallback = null;
+    }, 200);
+};
+
+document.getElementById('confirm-yes-btn').addEventListener('click', () => {
+    if (pendingConfirmCallback) pendingConfirmCallback();
+    window.closeConfirm();
+});
 
 document.getElementById('save-btn').addEventListener('click', async () => {
     const form = document.getElementById('task-form'); if(!form.checkValidity()) { form.reportValidity(); return; }
     const getData = (id) => document.getElementById(id).value;
     
-    // Scrape Contacts Table (1-4)
+    // Scrape Contacts Table
     const contactData = {};
     const tbody = document.getElementById('contacts-body');
     Array.from(tbody.children).forEach((tr, i) => {
         const cells = tr.children;
-        contactData[`contact${i+1}`] = { name: cells[0].textContent.trim(), des: cells[1].textContent.trim(), dept: cells[2].textContent.trim(), cont: cells[3].textContent.trim(), email: cells[4].textContent.trim() };
+        // Mapping: 0:Name, 1:Des, 2:Dept, 3:Cont, 4:Email
+        contactData[`contact${i+1}`] = {
+            name: cells[0].textContent.trim(),
+            des: cells[1].textContent.trim(),
+            dept: cells[2].textContent.trim(),
+            cont: cells[3].textContent.trim(),
+            email: cells[4].textContent.trim()
+        };
     });
 
     const data = {
-        type: getData('f_type'), moe_code: getData('f_moe_code'), closing_date: getData('f_closing_date'), school: getData('f_school'), assignment: getData('f_assignment'), programme: getData('f_programme'), brand: getData('f_brand'), specs: getData('f_specs'), folder: getData('f_folder'), costing_type: getData('f_costing_type'), cost_specs: getData('f_cost_specs'), cost_val: getData('f_cost_val'), trainers: getData('f_trainers'), notes: getData('f_notes'), appointment: getData('f_appointment'), status: getData('f_status'), updatedAt: serverTimestamp(), ...contactData
+        type: getData('f_type'), moe_code: getData('f_moe_code'), closing_date: getData('f_closing_date'), school: getData('f_school'), assignment: getData('f_assignment'), programme: getData('f_programme'), brand: getData('f_brand'), specs: getData('f_specs'), folder: getData('f_folder'), costing_type: getData('f_costing_type'), cost_specs: getData('f_cost_specs'), cost_val: getData('f_cost_val'), trainers: getData('f_trainers'), notes: getData('f_notes'), appointment: getData('f_appointment'), status: getData('f_status'), updatedAt: serverTimestamp(),
+        ...contactData
     };
+    
     const schoolName = getData('f_school');
+    
     try { 
-        if(editingTaskId) { await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), editingTaskId), data); logAction(`Updated task for ${schoolName}`); showToast("Task updated"); } 
-        else { data.createdAt = serverTimestamp(); await addDoc(collection(db, `artifacts/${appId}/public/data/tasks`), data); logAction(`Created new task for ${schoolName}`); showToast("Task created"); } 
+        if(editingTaskId) { 
+            await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), editingTaskId), data); 
+            logAction(`Updated task for ${schoolName}`);
+            showToast("Task updated"); 
+        } else { 
+            data.createdAt = serverTimestamp(); 
+            await addDoc(collection(db, `artifacts/${appId}/public/data/tasks`), data); 
+            logAction(`Created new task for ${schoolName}`);
+            showToast("Task created"); 
+        } 
         document.getElementById('modal-overlay').classList.add('hidden'); 
     } catch(e) { console.error(e); showToast("Error saving", 'error'); }
 });
 
+// UPDATED TASK DELETE
 document.getElementById('delete-btn').addEventListener('click', () => {
-    const task = allTasks.find(t => t.id === editingTaskId); const schoolName = task ? task.school : 'Unknown';
-    window.showConfirm("Delete Task?", "This action cannot be undone.", async () => { if(editingTaskId) { await deleteDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), editingTaskId)); logAction(`Deleted task: ${schoolName}`); showToast("Task deleted"); document.getElementById('modal-overlay').classList.add('hidden'); } });
+    const task = allTasks.find(t => t.id === editingTaskId); // Get task for logging
+    const schoolName = task ? task.school : 'Unknown';
+    
+    window.showConfirm("Delete Task?", "This action cannot be undone.", async () => {
+        if(editingTaskId) {
+            await deleteDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), editingTaskId));
+            logAction(`Deleted task: ${schoolName}`);
+            showToast("Task deleted");
+            document.getElementById('modal-overlay').classList.add('hidden');
+        }
+    });
 });
 
 window.openSchoolModal = (id) => {
     editingSchoolId = id; document.getElementById('school-form').reset(); document.getElementById('school-delete-btn').classList.toggle('hidden', !id); document.getElementById('school-modal-title').textContent = id ? 'Edit School' : 'Add School';
-    if(id) { const s = allSchools.find(x => x.id === id); if(s) { document.getElementById('sf_school').value = s.school; document.getElementById('sf_zone').value = s.zone || 'North'; document.getElementById('sf_consultant').value = s.consultant || ''; } } else { document.getElementById('sf_zone').value = 'North'; document.getElementById('sf_consultant').value = ''; }
+    if(id) { 
+        const s = allSchools.find(x => x.id === id); 
+        if(s) { 
+            document.getElementById('sf_school').value = s.school; 
+            document.getElementById('sf_zone').value = s.zone || 'North'; 
+            document.getElementById('sf_consultant').value = s.consultant || ''; 
+        } 
+    } else {
+            document.getElementById('sf_zone').value = 'North';
+            document.getElementById('sf_consultant').value = '';
+    }
     document.getElementById('school-modal-overlay').classList.remove('hidden');
 }
 document.getElementById('school-save-btn').addEventListener('click', async () => {
     const form = document.getElementById('school-form'); if(!form.checkValidity()) { form.reportValidity(); return; }
     const sName = document.getElementById('sf_school').value.trim();
+    
+    // --- DUPLICATE SCHOOL CHECK ---
+    // Check if school name exists (case-insensitive) and we are NOT editing that same school
     const exists = allSchools.some(s => s.school.toLowerCase().trim() === sName.toLowerCase() && s.id !== editingSchoolId);
-    if (exists) { window.showAlert("Duplicate School", `The school "${sName}" already exists. Please update the existing entry instead.`); return; }
+    
+    if (exists) {
+        window.showAlert("Duplicate School", `The school "${sName}" already exists. Please update the existing entry instead.`);
+        return;
+    }
+
     const data = { school: sName, zone: document.getElementById('sf_zone').value, consultant: document.getElementById('sf_consultant').value };
-    try { if(editingSchoolId) { await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/schools`), editingSchoolId), data); logAction(`Updated school details: ${sName}`); showToast("School updated"); } else { await addDoc(collection(db, `artifacts/${appId}/public/data/schools`), data); logAction(`Added new school: ${sName}`); showToast("School added"); } document.getElementById('school-modal-overlay').classList.add('hidden'); } catch(e) { console.error(e); showToast("Error saving school", 'error'); }
+    try { 
+        if(editingSchoolId) { 
+            await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/schools`), editingSchoolId), data); 
+            logAction(`Updated school details: ${sName}`);
+            showToast("School updated"); 
+        } else { 
+            await addDoc(collection(db, `artifacts/${appId}/public/data/schools`), data); 
+            logAction(`Added new school: ${sName}`);
+            showToast("School added"); 
+        } 
+        document.getElementById('school-modal-overlay').classList.add('hidden'); 
+    } catch(e) { console.error(e); showToast("Error saving school", 'error'); }
 });
-document.getElementById('school-delete-btn').addEventListener('click', () => { window.showConfirm("Delete School?", "This will remove the school entry.", async () => { if(editingSchoolId) { await deleteDoc(doc(collection(db, `artifacts/${appId}/public/data/schools`), editingSchoolId)); logAction("Deleted a school entry"); showToast("School deleted"); document.getElementById('school-modal-overlay').classList.add('hidden'); } }); });
+
+// UPDATED SCHOOL DELETE
+document.getElementById('school-delete-btn').addEventListener('click', () => {
+    window.showConfirm("Delete School?", "This will remove the school entry.", async () => {
+        if(editingSchoolId) {
+            await deleteDoc(doc(collection(db, `artifacts/${appId}/public/data/schools`), editingSchoolId));
+            logAction("Deleted a school entry");
+            showToast("School deleted");
+            document.getElementById('school-modal-overlay').classList.add('hidden');
+        }
+    });
+});
 
 function toggleView(view) {
-    if(currentView === 'kanban' || currentView === 'table') { viewFilters[currentView].search = document.getElementById('table-search').value; viewFilters[currentView].type = document.getElementById('filter-type').value; viewFilters[currentView].ec = document.getElementById('filter-ec').value; viewFilters[currentView].status = document.getElementById('filter-status').value; }
+    if(currentView === 'kanban' || currentView === 'table') {
+            viewFilters[currentView].search = document.getElementById('table-search').value;
+            viewFilters[currentView].type = document.getElementById('filter-type').value;
+            viewFilters[currentView].ec = document.getElementById('filter-ec').value;
+            viewFilters[currentView].status = document.getElementById('filter-status').value;
+    }
+
     currentView = view;
     
-    // FAB Logic
-    const fabAddBtn = document.getElementById('fab-add-btn'); const fabAddText = document.getElementById('fab-add-text');
-    if (view === 'zones') { fabAddText.textContent = "Add School"; fabAddBtn.setAttribute('onclick', "window.openSchoolModal(null)"); } else { fabAddText.textContent = "Add Task"; fabAddBtn.setAttribute('onclick', "window.openModal(null)"); }
+    // UPDATE FAB BUTTON DYNAMICALLY BASED ON VIEW
+    const fabAddBtn = document.getElementById('fab-add-btn');
+    const fabAddText = document.getElementById('fab-add-text');
+    const fabImportBtn = document.getElementById('fab-import-btn'); // NEW
 
-    if(view === 'kanban' || view === 'table') { document.getElementById('table-search').value = viewFilters[view].search; document.getElementById('filter-type').value = viewFilters[view].type; document.getElementById('filter-ec').value = viewFilters[view].ec; document.getElementById('filter-status').value = viewFilters[view].status; }
+    if (view === 'zones') {
+        fabAddText.textContent = "Add School";
+        fabAddBtn.setAttribute('onclick', "window.openSchoolModal(null)");
+        if(fabImportBtn) fabImportBtn.classList.remove('hidden'); // Show Import
+        if(fabImportBtn) fabImportBtn.classList.add('flex');
+    } else {
+        fabAddText.textContent = "Add Task";
+        fabAddBtn.setAttribute('onclick', "window.openModal(null)");
+        if(fabImportBtn) fabImportBtn.classList.add('hidden'); // Hide Import
+        if(fabImportBtn) fabImportBtn.classList.remove('flex');
+    }
+
+    if(view === 'kanban' || view === 'table') {
+        document.getElementById('table-search').value = viewFilters[view].search;
+        document.getElementById('filter-type').value = viewFilters[view].type;
+        document.getElementById('filter-ec').value = viewFilters[view].ec;
+        document.getElementById('filter-status').value = viewFilters[view].status;
+    }
 
     const kb = document.getElementById('kanban-view'); const tb = document.getElementById('table-view'); const zv = document.getElementById('zones-view');
     const tl = document.getElementById('toolbar'); const kt = document.getElementById('kanban-toolbar'); const zt = document.getElementById('zones-toolbar');
     ['view-kanban','view-table','view-zones'].forEach(id => { const btn = document.getElementById(id); if (view === id.replace('view-','')) { btn.classList.add('bg-white', 'shadow-sm', 'text-dark', 'font-semibold'); btn.classList.remove('text-gray-500'); } else { btn.classList.remove('bg-white', 'shadow-sm', 'text-dark', 'font-semibold'); btn.classList.add('text-gray-500'); } });
     kb.classList.add('hidden'); tb.classList.add('hidden'); zv.classList.add('hidden'); tl.classList.add('hidden'); kt.classList.add('hidden'); zt.classList.add('hidden');
-    if(view === 'kanban') { kb.classList.remove('hidden'); kt.classList.remove('hidden'); tl.classList.remove('hidden'); } else if(view === 'table') { tb.classList.remove('hidden'); tl.classList.remove('hidden'); } else if(view === 'zones') { zv.classList.remove('hidden'); zt.classList.remove('hidden'); }
+    
+    if(view === 'kanban') { kb.classList.remove('hidden'); kt.classList.remove('hidden'); tl.classList.remove('hidden'); } 
+    else if(view === 'table') { tb.classList.remove('hidden'); tl.classList.remove('hidden'); } 
+    else if(view === 'zones') { zv.classList.remove('hidden'); zt.classList.remove('hidden'); }
+    
     refreshView();
 }
 document.getElementById('view-kanban').addEventListener('click', () => toggleView('kanban')); document.getElementById('view-table').addEventListener('click', () => toggleView('table')); document.getElementById('view-zones').addEventListener('click', () => toggleView('zones'));
@@ -651,46 +1076,176 @@ window.toggleProgress = (e, taskId) => {
     activePopoverTaskId = taskId; const task = allTasks.find(t=>t.id===taskId); const list = document.getElementById('progress-list'); list.innerHTML = '';
     PROGRESS_ITEMS.forEach(item => { const checked = task.progress?.[item.id] || (item.id==='annex_b' && task.cost_val?.length>0); list.innerHTML += `<label class="flex items-center space-x-3 cursor-pointer"><input type="checkbox" class="form-checkbox h-4 w-4 text-ios_blue rounded" ${checked?'checked':''} onchange="window.updateProgress('${taskId}','${item.id}',this.checked)"><span class="text-xs font-medium text-gray-700">${item.label}</span></label>`; });
     p.classList.remove('hidden'); 
-    const rect = e.target.getBoundingClientRect(); const pWidth = 288; const pHeight = 350; let top = rect.bottom + window.scrollY + 5; let left = rect.left;
-    if (left + pWidth > window.innerWidth) left = window.innerWidth - pWidth - 20; if (top + pHeight > window.innerHeight + window.scrollY) top = rect.top + window.scrollY - pHeight + 50;
-    p.style.top = `${top}px`; p.style.left = `${left}px`;
+    
+    const rect = e.target.getBoundingClientRect(); 
+    const pWidth = 288;
+    const pHeight = 350;
+    
+    let top = rect.bottom + window.scrollY + 5;
+    let left = rect.left;
+
+    if (left + pWidth > window.innerWidth) {
+        left = window.innerWidth - pWidth - 20; 
+    }
+    if (top + pHeight > window.innerHeight + window.scrollY) {
+        top = rect.top + window.scrollY - pHeight + 50;
+    }
+
+    p.style.top = `${top}px`; 
+    p.style.left = `${left}px`;
 };
 window.closeProgressPopover = () => document.getElementById('progress-popover').classList.add('hidden');
-window.updateProgress = async (id, key, val) => { const t = allTasks.find(x=>x.id===id); const p = {...(t.progress||{})}; p[key]=val; await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), id), {progress:p}); const itemName = PROGRESS_ITEMS.find(i=>i.id===key)?.label || key; logAction(`Updated progress for ${t.school}: ${val ? 'Completed' : 'Unchecked'} ${itemName}`); showToast("Progress updated"); };
+window.updateProgress = async (id, key, val) => { 
+    const t = allTasks.find(x=>x.id===id); 
+    const p = {...(t.progress||{})}; 
+    p[key]=val; 
+    await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), id), {progress:p}); 
+    
+    const itemName = PROGRESS_ITEMS.find(i=>i.id===key)?.label || key;
+    logAction(`Updated progress for ${t.school}: ${val ? 'Completed' : 'Unchecked'} ${itemName}`);
+    
+    showToast("Progress updated"); 
+};
 window.allowDrop = (e) => e.preventDefault(); 
-window.drop = async (e, status) => { e.preventDefault(); const id = e.dataTransfer.getData("text"); if(id) { const t = allTasks.find(x=>x.id===id); await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), id), { status }); logAction(`Moved ${t.school} to ${status}`); showToast(`Moved to ${status}`); } };
+window.drop = async (e, status) => { 
+    e.preventDefault(); 
+    const id = e.dataTransfer.getData("text"); 
+    if(id) {
+        const t = allTasks.find(x=>x.id===id);
+        await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), id), { status }); 
+        logAction(`Moved ${t.school} to ${status}`);
+        showToast(`Moved to ${status}`); 
+    }
+};
 
-window.toggleFabMenu = () => { const menu = document.getElementById('fab-menu'); const icon = document.getElementById('fab-icon'); if (menu.classList.contains('opacity-0')) { menu.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.classList.add('rotate-45'); } else { menu.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.classList.remove('rotate-45'); } };
-
-// --- EXPORT CSV LOGIC (UPDATED) ---
-window.exportCSV = () => {
-    const escapeCsv = (val) => { if (val === null || val === undefined) return ''; const str = String(val); if (str.includes(',') || str.includes('"') || str.includes('\n')) { return `"${str.replace(/"/g, '""')}"`; } return str; };
-    if (currentView === 'zones') {
-        const headers = ["No.", "School Name", "Zone", "Consultant"];
-        let schoolsToExport = [...allSchools].sort((a, b) => { const valA = (a[schoolSort.key]||'').toLowerCase(); const valB = (b[schoolSort.key]||'').toLowerCase(); return valA < valB ? (schoolSort.dir==='asc'?-1:1) : (valA > valB ? (schoolSort.dir==='asc'?1:-1) : 0); });
-        const rows = schoolsToExport.map((s, index) => [index + 1, s.school, s.zone, s.consultant].map(escapeCsv).join(','));
-        downloadCSV([headers.join(','), ...rows].join('\n'), 'schools_zone_export');
+// --- FAB & MENU LOGIC ---
+window.toggleFabMenu = () => {
+    const menu = document.getElementById('fab-menu');
+    const icon = document.getElementById('fab-icon');
+    
+    if (menu.classList.contains('opacity-0')) {
+        // Open
+        menu.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+        icon.classList.add('rotate-45');
     } else {
-        const headers = ["Export Date", "Item Code", "Closing Date", "Zone", "Consultant", "School", "Contact Person 1 Name", "Contact Person 1 Designation", "Contact Person 1 Department", "Contact Person 1 Contact Number", "Contact Person 1 Email", "Contact Person 2 Name", "Contact Person 2 Designation", "Contact Person 2 Department", "Contact Person 2 Contact Number", "Contact Person 2 Email", "Programme Name", "Brand", "Status", "GeBIZ Updated", "Email Follow-up"];
+        // Close
+        menu.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+        icon.classList.remove('rotate-45');
+    }
+};
+
+// --- EXPORT CSV LOGIC ---
+window.exportCSV = () => {
+    const escapeCsv = (val) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+    };
+
+    if (currentView === 'zones') {
+        // --- ZONE EXPORT LOGIC (Count - School - Zone - Consultant) ---
+        const headers = ["No.", "School Name", "Zone", "Consultant"];
+        
+        // Replicate the current sort logic from renderZonesTable for consistency
+        let schoolsToExport = [...allSchools];
+        schoolsToExport.sort((a, b) => { 
+            const valA = (a[schoolSort.key]||'').toLowerCase(); 
+            const valB = (b[schoolSort.key]||'').toLowerCase(); 
+            return valA < valB ? (schoolSort.dir==='asc'?-1:1) : (valA > valB ? (schoolSort.dir==='asc'?1:-1) : 0); 
+        });
+
+        const rows = schoolsToExport.map((s, index) => {
+            return [
+                index + 1,
+                s.school,
+                s.zone,
+                s.consultant
+            ].map(escapeCsv).join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        downloadCSV(csvContent, 'schools_zone_export');
+
+    } else {
+        // --- EXISTING TASK EXPORT LOGIC ---
+        const headers = [
+            "Export Date", "Item Code", "Closing Date", "Zone", "Consultant", "School", 
+            "Contact Person 1 Name", "Contact Person 1 Designation", "Contact Person 1 Department", "Contact Person 1 Contact Number", "Contact Person 1 Email", 
+            "Contact Person 2 Name", "Contact Person 2 Designation", "Contact Person 2 Department", "Contact Person 2 Contact Number", "Contact Person 2 Email", 
+            "Programme Name", "Brand", "Status", "GeBIZ Updated", "Email Follow-up"
+        ];
+    
         const today = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    
+        // Map tasks to rows
         const rows = allTasks.map(t => {
+            // Find detailed school info for Zone and Consultant separation
             const schoolData = allSchools.find(s => s.school === t.school) || {};
-            return [today, t.moe_code, t.closing_date, schoolData.zone || '', schoolData.consultant || '', t.school, t.contact1?.name, t.contact1?.des, t.contact1?.dept, t.contact1?.cont, t.contact1?.email, t.contact2?.name, t.contact2?.des, t.contact2?.dept, t.contact2?.cont, t.contact2?.email, t.programme, t.brand, t.status, 
+            
+            return [
+                today,
+                t.moe_code,
+                t.closing_date,
+                schoolData.zone || '',
+                schoolData.consultant || '', // Use the consultant from Schools DB for consistency, or parse t.assignment
+                t.school,
+                // Contact 1
+                t.contact1?.name, t.contact1?.des, t.contact1?.dept, t.contact1?.cont, t.contact1?.email,
+                // Contact 2
+                t.contact2?.name, t.contact2?.des, t.contact2?.dept, t.contact2?.cont, t.contact2?.email,
+                t.programme,
+                t.brand,
+                t.status, 
                 t.progress?.gebiz ? 'Yes' : 'No', // New Col
                 t.progress?.email ? 'Yes' : 'No'  // New Col
             ].map(escapeCsv).join(',');
         });
-        downloadCSV([headers.join(','), ...rows].join('\n'), 'checklist_export');
+    
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        downloadCSV(csvContent, 'checklist_export');
     }
+    
+    // Close FAB menu after export
     window.toggleFabMenu();
 };
 
-const downloadCSV = (content, filenamePrefix) => { const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", `${filenamePrefix}_${new Date().toISOString().slice(0,10)}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+const downloadCSV = (content, filenamePrefix) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${filenamePrefix}_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
+// AUTO HIDE LOGIC FOR UI ELEMENTS
 document.addEventListener('click', (e) => {
-    const fabMenu = document.getElementById('fab-menu'); const fabBtn = document.getElementById('main-fab'); if (!fabBtn.contains(e.target) && !fabMenu.contains(e.target) && !fabMenu.classList.contains('opacity-0')) window.toggleFabMenu();
-    const notifPop = document.getElementById('notif-popover'); const notifBtn = document.getElementById('notif-btn'); if (!notifBtn.contains(e.target) && !notifPop.contains(e.target) && !notifPop.classList.contains('hidden')) window.toggleNotifications();
-    const progPop = document.getElementById('progress-popover'); if (!progPop.classList.contains('hidden') && !progPop.contains(e.target) && !e.target.closest('button[onclick^="window.toggleProgress"]')) window.closeProgressPopover();
+    // FAB Menu
+    const fabMenu = document.getElementById('fab-menu');
+    const fabBtn = document.getElementById('main-fab');
+    if (!fabBtn.contains(e.target) && !fabMenu.contains(e.target) && !fabMenu.classList.contains('opacity-0')) {
+        window.toggleFabMenu();
+    }
+
+    // Notification Popover
+    const notifPop = document.getElementById('notif-popover');
+    const notifBtn = document.getElementById('notif-btn');
+    if (!notifBtn.contains(e.target) && !notifPop.contains(e.target) && !notifPop.classList.contains('hidden')) {
+        window.toggleNotifications();
+    }
+
+    // Progress Popover
+    const progPop = document.getElementById('progress-popover');
+    // Ensure we don't close when clicking the trigger button itself (dynamically created)
+    if (!progPop.classList.contains('hidden') && !progPop.contains(e.target) && !e.target.closest('button[onclick^="window.toggleProgress"]')) {
+         window.closeProgressPopover();
+    }
 });
 
 initApp();
