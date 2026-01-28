@@ -50,7 +50,7 @@
         </div>
     </div>
 
-    <!-- PASSWORD MODAL (New) -->
+    <!-- PASSWORD MODAL -->
     <div id="password-modal" class="fixed inset-0 z-[120] bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full">
             <h3 class="text-lg font-bold text-dark mb-2 text-center">Admin Access</h3>
@@ -63,7 +63,7 @@
         </div>
     </div>
 
-    <!-- SUMMARY MODAL (New) -->
+    <!-- SUMMARY MODAL -->
     <div id="summary-modal" class="fixed inset-0 z-[105] bg-gray-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
@@ -106,7 +106,8 @@
                     <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                     <div class="flex flex-col">
                         <h1 class="text-xl font-bold tracking-tight text-dark hidden sm:block leading-none">CheckList</h1>
-                        <span class="text-[10px] text-gray-400 font-mono hidden sm:block leading-none mt-0.5 ml-0.5">version 2.2</span>
+                        <!-- Updated Version -->
+                        <span class="text-[10px] text-gray-400 font-mono hidden sm:block leading-none mt-0.5 ml-0.5">version 2.3</span>
                     </div>
                 </div>
                 
@@ -188,7 +189,7 @@
             </div>
         </div>
         
-        <!-- ZONES TOOLBAR (UPDATED) -->
+        <!-- ZONES TOOLBAR -->
         <div id="zones-toolbar" class="px-4 sm:px-6 py-3 border-t border-gray-100 hidden flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50/50 gap-3">
             <div class="flex items-center gap-4">
                 <h3 class="text-sm font-bold text-gray-700 whitespace-nowrap">Zone Allocation 2026</h3>
@@ -353,8 +354,9 @@
         </button>
     </div>
 
-    <!-- VIEW ONLY MODAL (New v2.1) -->
-    <div id="view-modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-all duration-300">
+    <!-- VIEW ONLY MODAL (Updated Layout) -->
+    <!-- Added onclick for closing on outside click -->
+    <div id="view-modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-all duration-300" onclick="if(event.target === this) this.classList.add('hidden')">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all scale-100">
             <!-- Header -->
             <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/80 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center">
@@ -386,10 +388,15 @@
                                     <div id="view-school" class="font-bold text-dark text-lg leading-tight mt-0.5"></div>
                                     <div id="view-zone" class="text-xs text-ios_blue font-medium mt-1"></div>
                                 </div>
-                                <div class="grid grid-cols-2 gap-3">
+                                <!-- Updated: Separated Rows for Type, Code, Closing Date -->
+                                <div class="space-y-3">
                                     <div class="p-3 bg-gray-50 rounded-xl">
-                                        <span class="text-xs text-gray-500 block">Type / MOE</span>
+                                        <span class="text-xs text-gray-500 block">Type</span>
                                         <div id="view-type" class="font-semibold text-dark mt-0.5"></div>
+                                    </div>
+                                    <div class="p-3 bg-gray-50 rounded-xl">
+                                        <span class="text-xs text-gray-500 block">Item Code</span>
+                                        <div id="view-code" class="font-semibold text-dark mt-0.5 font-mono"></div>
                                     </div>
                                     <div class="p-3 bg-gray-50 rounded-xl">
                                         <span class="text-xs text-gray-500 block">Closing Date</span>
@@ -438,7 +445,7 @@
                                 </div>
                                  <div>
                                     <span class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Notes</span>
-                                    <div id="view-notes" class="text-sm text-gray-600 bg-yellow-50/50 p-4 rounded-xl border border-yellow-100 italic whitespace-pre-line"></div>
+                                    <div id="view-notes" class="text-sm text-gray-600 bg-yellow-50/50 p-4 rounded-xl border border-yellow-100 italic whitespace-pre-line break-words"></div>
                                 </div>
                             </div>
                          </div>
@@ -512,7 +519,8 @@
                                 <option value="Passionista">Passionista</option>
                                 <option value="Sports First">Sports First</option>
                                 <option value="Studio Wu">Studio Wu</option>
-                                <option value="Vivarch Enrichment">Vivarch Enrichment</option>
+                                <!-- Updated: Removed "Enrichment" -->
+                                <option value="Vivarch">Vivarch</option>
                                 <option value="Regenerate">Regenerate</option>
                                 <option value="STEMaker">STEMaker</option>
                                 <option value="Travelearn">Travelearn</option>
