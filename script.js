@@ -41,9 +41,20 @@ const ZONE_COLORS = { "East": "bg-zone-east", "North": "bg-zone-north", "South":
 const KANBAN_STATUSES = ["In Progress", "For Submission", "Pending Award", "Awarded", "Not Awarded", "No Award", "Skipped"];
 const PROGRESS_ITEMS = [{ id: 'proposal', label: 'Programme Proposal' }, { id: 'annex_b', label: 'Annex B - Price Proposal' }, { id: 'annex_f', label: 'Annex F - Instructor Deployment' }, { id: 'outline', label: 'Programme Outline' }, { id: 'track_record', label: 'Programme Track Record' }, { id: 'trainers_files', label: 'Trainers\' Files' }, { id: 'gebiz', label: 'GeBIZ Tracker Update' }, { id: 'email', label: 'Email Follow-up' }];
 
-const formatDate = (dateStr) => { if (!dateStr) return '-'; try { return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); } catch (e) { return dateStr; } };
+// UPDATED: Added weekday 'short' (e.g. Mon, 25 Dec 2025)
+const formatDate = (dateStr) => { if (!dateStr) return '-'; try { return new Date(dateStr).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }); } catch (e) { return dateStr; } };
 const getProgressState = (task) => { const p = task.progress || {}; const annexB = p.annex_b || (task.cost_val && task.cost_val.trim().length > 0); const firstSix = [p.proposal, annexB, p.annex_f, p.outline, p.track_record, p.trainers_files].every(Boolean); const bothLastTwo = [p.gebiz, p.email].every(Boolean); return { proposal: p.proposal, annex_b: annexB, annex_f: p.annex_f, outline: p.outline, track_record: p.track_record, trainers_files: p.trainers_files, gebiz: p.gebiz, email: p.email, allFirstSix: firstSix, bothLastTwo: bothLastTwo }; };
 const getTaskLabel = (t) => { const brand = t.brand === 'Vivarch Enrichment' ? 'Vivarch' : (t.brand || ''); if (!t.assignment && !brand) return 'Unassigned'; if (!t.assignment) return brand; if (!brand) return t.assignment; return `${t.assignment}, ${brand}`; };
+
+// Helper to make links clickable pills
+const linkify = (text) => {
+    if (!text) return '';
+    // Simple Regex for URLs (http/https/ftp)
+    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    return text.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" class="inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 text-xs hover:bg-blue-200 transition-colors break-all align-middle mt-1 mb-1" onclick="event.stopPropagation()">${url}</a>`;
+    });
+}
 
 // --- HELPER: ROBUST NAME NORMALIZATION ---
 // Removes extra spaces, invisible chars, and trims.
@@ -536,8 +547,12 @@ window.openViewModal = (task) => {
     document.getElementById('view-school').textContent = task.school;
     const schoolObj = allSchools.find(s => s.school === task.school);
     document.getElementById('view-zone').textContent = schoolObj ? `${schoolObj.zone} Zone` : '';
-    document.getElementById('view-type').innerHTML = `${task.type} <span class="text-gray-400 font-normal">|</span> ${task.moe_code || '-'}`;
+    
+    // UPDATED: Populate Separate Rows
+    document.getElementById('view-type').textContent = task.type;
+    document.getElementById('view-code').textContent = task.moe_code || '-';
     document.getElementById('view-date').textContent = formatDate(task.closing_date);
+
     document.getElementById('view-assignment').textContent = getTaskLabel(task);
     document.getElementById('view-brand').textContent = task.brand || '';
     
@@ -554,7 +569,9 @@ window.openViewModal = (task) => {
     document.getElementById('view-specs-btn').href = task.specs;
     document.getElementById('view-folder-btn').href = task.folder;
     document.getElementById('view-trainers').textContent = task.trainers || 'No trainer details specified.';
-    document.getElementById('view-notes').textContent = task.notes || 'No notes.';
+    
+    // UPDATED: Use Linkify for Notes
+    document.getElementById('view-notes').innerHTML = linkify(task.notes || 'No notes.');
 
     // Contacts Column
     const contactsList = document.getElementById('view-contacts-list');
@@ -577,7 +594,8 @@ window.openViewModal = (task) => {
 
     // Costing
     document.getElementById('view-cost-type').textContent = task.costing_type || '-';
-    document.getElementById('view-cost-details').textContent = (task.cost_specs || '') + '\n' + (task.cost_val || '');
+    // Optionally use Linkify here too if needed, though notes is primary
+    document.getElementById('view-cost-details').innerHTML = linkify((task.cost_specs || '') + '\n' + (task.cost_val || ''));
 
     // Setup Edit Button
     document.getElementById('view-edit-btn').onclick = () => {
