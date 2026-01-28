@@ -81,10 +81,33 @@ async function initApp() {
     onAuthStateChanged(auth, (user) => {
         if (user) { 
             userId = user.uid; document.getElementById('loading-overlay').classList.add('opacity-0', 'pointer-events-none'); 
-            if(!currentUserDisplay) document.getElementById('name-modal').classList.remove('hidden'); else { document.getElementById('user-badge').textContent = currentUserDisplay; initListeners(); }
+            if(!currentUserDisplay) document.getElementById('name-modal').classList.remove('hidden'); 
+            else { 
+                document.getElementById('user-badge').textContent = currentUserDisplay; 
+                initListeners(); 
+                // Initialize Header Time
+                updateHeaderTime();
+                setInterval(updateHeaderTime, 1000);
+            }
             toggleView(currentView);
         }
     });
+}
+
+function updateHeaderTime() {
+    const now = new Date();
+    // Format: Wed, 28 Jan 08:05 AM
+    document.getElementById('header-time').textContent = now.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).replace(',', '');
+    
+    // Greeting
+    const hr = now.getHours();
+    let g = 'Morning';
+    if (hr >= 12) g = 'Afternoon';
+    if (hr >= 18) g = 'Evening';
+    
+    // Ensure name is present
+    const name = currentUserDisplay || 'User';
+    document.getElementById('header-greeting').textContent = `Good ${g}, ${name}!`;
 }
 
 function showToast(msg, type='success') {
@@ -119,7 +142,20 @@ function initListeners() {
     });
 }
 
-window.saveUserName = (e) => { e.preventDefault(); const val = document.getElementById('user-name-input').value.trim().toUpperCase(); if(val) { currentUserDisplay = val; sessionStorage.setItem('checklist_username', val); document.getElementById('name-modal').classList.add('hidden'); document.getElementById('user-badge').textContent = val; initListeners(); } };
+window.saveUserName = (e) => { 
+    e.preventDefault(); 
+    const val = document.getElementById('user-name-input').value.trim().toUpperCase(); 
+    if(val) { 
+        currentUserDisplay = val; 
+        sessionStorage.setItem('checklist_username', val); 
+        document.getElementById('name-modal').classList.add('hidden'); 
+        document.getElementById('user-badge').textContent = val; 
+        initListeners();
+        // Start header timer
+        updateHeaderTime();
+        setInterval(updateHeaderTime, 1000);
+    } 
+};
 window.toggleNotifications = () => { const pop = document.getElementById('notif-popover'); pop.classList.toggle('hidden'); if(!pop.classList.contains('hidden')) document.getElementById('notif-badge').classList.add('hidden'); };
 
 async function seedConsultants() { const batch = writeBatch(db); const defaults = ["Sarah", "Martin", "Krystle", "Charlynn", "Sapnaa", "Yuniza"]; defaults.forEach(name => { batch.set(doc(collection(db, `artifacts/${appId}/public/data/consultants`)), { name, color: LEGACY_COLORS[name] || '#6B7280', active: true, createdAt: serverTimestamp() }); }); await batch.commit(); }
@@ -556,12 +592,17 @@ window.openViewModal = (task) => {
     document.getElementById('view-assignment').textContent = getTaskLabel(task);
     document.getElementById('view-brand').textContent = task.brand || '';
     
-    // Progress
+    // Progress - UPDATED TO INTERACTIVE CHECKBOXES
     const ps = getProgressState(task);
     const progCont = document.getElementById('view-progress-container');
     progCont.innerHTML = PROGRESS_ITEMS.map(item => {
         const checked = ps[item.id];
-        return `<div class="flex items-center gap-2 mb-1"><div class="w-4 h-4 rounded border flex items-center justify-center ${checked ? 'bg-ios_blue border-ios_blue' : 'border-gray-300'}">${checked ? '<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>' : ''}</div><span class="text-xs text-gray-600 ${checked ? 'line-through opacity-70' : ''}">${item.label}</span></div>`;
+        return `<label class="flex items-center gap-2 mb-1 cursor-pointer transition-opacity hover:opacity-80">
+            <input type="checkbox" class="form-checkbox h-4 w-4 text-ios_blue rounded border-gray-300 focus:ring-ios_blue transition duration-150 ease-in-out" 
+                   ${checked ? 'checked' : ''} 
+                   onchange="window.updateProgress('${task.id}', '${item.id}', this.checked)">
+            <span class="text-xs text-gray-600 ${checked ? 'line-through opacity-70' : ''}">${item.label}</span>
+        </label>`;
     }).join('');
 
     // Programme Column
@@ -959,8 +1000,57 @@ document.getElementById('save-btn').addEventListener('click', async () => {
     
     try { 
         if(editingTaskId) { 
+            // GRANULAR LOGGING LOGIC
+            const old = allTasks.find(t => t.id === editingTaskId);
+            const changes = [];
+            
+            if (old) {
+                // Normalization helper (handle null/undefined vs "")
+                const norm = (val) => (val || '').trim();
+
+                // Direct Field Checks
+                if (norm(old.status) !== norm(data.status)) changes.push(`Status to ${data.status}`);
+                if (norm(old.closing_date) !== norm(data.closing_date)) changes.push(`Closing Date to ${formatDate(data.closing_date)}`);
+                if (norm(old.programme) !== norm(data.programme)) changes.push('Programme Name');
+                if (norm(old.assignment) !== norm(data.assignment)) changes.push('Assignment');
+                if (norm(old.brand) !== norm(data.brand)) changes.push(`Brand to ${data.brand}`);
+                if (norm(old.notes) !== norm(data.notes)) changes.push('Notes');
+                if (norm(old.cost_val) !== norm(data.cost_val)) changes.push('Cost Value');
+                if (norm(old.cost_specs) !== norm(data.cost_specs)) changes.push('Cost Specs');
+                if (norm(old.costing_type) !== norm(data.costing_type)) changes.push('Costing Type');
+                if (norm(old.trainers) !== norm(data.trainers)) changes.push('Trainers Info'); 
+                if (norm(old.specs) !== norm(data.specs)) changes.push('Specs Link');
+                if (norm(old.folder) !== norm(data.folder)) changes.push('Folder Link');
+                if (norm(old.moe_code) !== norm(data.moe_code)) changes.push('MOE Code');
+                if (norm(old.appointment) !== norm(data.appointment)) changes.push('Appointment');
+                
+                // Robust Contact Check
+                // We compare field-by-field to avoid false positives from JSON structure mismatches
+                let contactsChanged = false;
+                for(let i=1; i<=4; i++) {
+                    const k = `contact${i}`;
+                    const oldC = old[k] || {};
+                    const newC = data[k]; // Guaranteed to exist from form logic above
+                    
+                    const hasChange = 
+                        norm(oldC.name) !== norm(newC.name) ||
+                        norm(oldC.des) !== norm(newC.des) ||
+                        norm(oldC.dept) !== norm(newC.dept) ||
+                        norm(oldC.cont) !== norm(newC.cont) ||
+                        norm(oldC.email) !== norm(newC.email);
+                        
+                    if(hasChange) {
+                        contactsChanged = true;
+                        break; 
+                    }
+                }
+                if (contactsChanged) changes.push('Contact Details');
+            }
+
+            let logMsg = changes.length > 0 ? `Updated ${schoolName}: Changed ${changes.join(', ')}` : `Updated ${schoolName} (No major changes detected)`;
+
             await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), editingTaskId), data); 
-            logAction(`Updated task for ${schoolName}`);
+            logAction(logMsg);
             showToast("Task updated"); 
         } else { 
             data.createdAt = serverTimestamp(); 
@@ -1120,7 +1210,12 @@ window.updateProgress = async (id, key, val) => {
     await updateDoc(doc(collection(db, `artifacts/${appId}/public/data/tasks`), id), {progress:p}); 
     
     const itemName = PROGRESS_ITEMS.find(i=>i.id===key)?.label || key;
+    // Updated Logging for Progress
     logAction(`Updated progress for ${t.school}: ${val ? 'Completed' : 'Unchecked'} ${itemName}`);
+    
+    // If View Modal is open, update checkboxes visually without full reload?
+    // Not strictly necessary as Firebase snapshot listener calls refreshView/openViewModal logic,
+    // but checkbox state will update automatically via user interaction.
     
     showToast("Progress updated"); 
 };
