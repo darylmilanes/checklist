@@ -34,7 +34,7 @@ const viewFilters = {
 };
 
 // Legacy Color Map & Zone Colors
-const LEGACY_COLORS = { "Sarah": "#A855F7", "Martin": "#3B82F6", "Krystle": "#EC4899", "Charlynn": "#10B981", "Sapnaa": "#6B7280", "Yuniza": "#EAB308" };
+const LEGACY_COLORS = { "Sarah": "#A855F7", "Khai": "#fffdaf", "Martin": "#3B82F6", "Krystle": "#EC4899", "Charlynn": "#10B981", "Sapnaa": "#6B7280", "Yuniza": "#EAB308" };
 // CSS classes mapped to Zone names
 const ZONE_COLORS = { "East": "bg-zone-east", "North": "bg-zone-north", "South": "bg-zone-south", "West": "bg-zone-west" };
 
