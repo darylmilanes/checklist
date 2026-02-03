@@ -158,7 +158,7 @@ window.saveUserName = (e) => {
 };
 window.toggleNotifications = () => { const pop = document.getElementById('notif-popover'); pop.classList.toggle('hidden'); if(!pop.classList.contains('hidden')) document.getElementById('notif-badge').classList.add('hidden'); };
 
-async function seedConsultants() { const batch = writeBatch(db); const defaults = ["Sarah", "Martin", "Krystle", "Charlynn", "Sapnaa", "Yuniza"]; defaults.forEach(name => { batch.set(doc(collection(db, `artifacts/${appId}/public/data/consultants`)), { name, color: LEGACY_COLORS[name] || '#6B7280', active: true, createdAt: serverTimestamp() }); }); await batch.commit(); }
+async function seedConsultants() { const batch = writeBatch(db); const defaults = ["Sarah", "Khai", "Martin", "Krystle", "Charlynn", "Sapnaa", "Yuniza"]; defaults.forEach(name => { batch.set(doc(collection(db, `artifacts/${appId}/public/data/consultants`)), { name, color: LEGACY_COLORS[name] || '#6B7280', active: true, createdAt: serverTimestamp() }); }); await batch.commit(); }
 
 function updateConsultantUI() {
     // Deduplicate names using normalized keys (fixes duplicate "Krystle" vs "Krystle " vs "Krystle.")
