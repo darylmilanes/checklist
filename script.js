@@ -34,7 +34,7 @@ const viewFilters = {
 };
 
 // Legacy Color Map & Zone Colors
-const LEGACY_COLORS = { "Sarah": "#A855F7", "Khai": "#ffdb58", "Martin": "#3B82F6", "Krystle": "#EC4899", "Charlynn": "#10B981", "Sapnaa": "#6B7280", "Yuniza": "#EAB308" };
+const LEGACY_COLORS = { "Sarah": "#A855F7", "Martin": "#3B82F6", "Krystle": "#EC4899", "Charlynn": "#10B981", "Sapnaa": "#6B7280", "Yuniza": "#EAB308" };
 // CSS classes mapped to Zone names
 const ZONE_COLORS = { "East": "bg-zone-east", "North": "bg-zone-north", "South": "bg-zone-south", "West": "bg-zone-west" };
 
@@ -158,7 +158,7 @@ window.saveUserName = (e) => {
 };
 window.toggleNotifications = () => { const pop = document.getElementById('notif-popover'); pop.classList.toggle('hidden'); if(!pop.classList.contains('hidden')) document.getElementById('notif-badge').classList.add('hidden'); };
 
-async function seedConsultants() { const batch = writeBatch(db); const defaults = ["Sarah", "Khai", "Martin", "Krystle", "Charlynn", "Sapnaa", "Yuniza"]; defaults.forEach(name => { batch.set(doc(collection(db, `artifacts/${appId}/public/data/consultants`)), { name, color: LEGACY_COLORS[name] || '#6B7280', active: true, createdAt: serverTimestamp() }); }); await batch.commit(); }
+async function seedConsultants() { const batch = writeBatch(db); const defaults = ["Sarah", "Martin", "Krystle", "Charlynn", "Sapnaa", "Yuniza"]; defaults.forEach(name => { batch.set(doc(collection(db, `artifacts/${appId}/public/data/consultants`)), { name, color: LEGACY_COLORS[name] || '#6B7280', active: true, createdAt: serverTimestamp() }); }); await batch.commit(); }
 
 function updateConsultantUI() {
     // Deduplicate names using normalized keys (fixes duplicate "Krystle" vs "Krystle " vs "Krystle.")
@@ -284,14 +284,26 @@ function createKanbanCard(task) {
     const ps = getProgressState(task);
     const segs = PROGRESS_ITEMS.map((item, i) => `<div class="progress-segment ${i<6?(ps.allFirstSix && ps[item.id]?'active-solid':(ps[item.id]?'active-light':'')):(ps.bothLastTwo && ps[item.id]?'active-solid':(ps[item.id]?'active-light':''))}"></div>`).join('');
     
+    // --- APPOINTMENT DOT LOGIC ---
+    let apptBadge = '';
+    if (task.appointment) {
+        const apptDate = new Date(task.appointment);
+        const now = new Date();
+        if (apptDate > now) {
+            apptBadge = `<span class="appt-dot appt-dot-future" title="Upcoming Appointment: ${new Date(task.appointment).toLocaleString()}"></span>`;
+        } else {
+            apptBadge = `<span class="appt-dot appt-dot-past" title="Past Appointment: ${new Date(task.appointment).toLocaleString()}"></span>`;
+        }
+    }
+
     const card = document.createElement('div');
     card.className = `kanban-card bg-white rounded-xl shadow-sm border border-gray-100 cursor-grab hover:shadow-ios-hover transition-all transform hover:-translate-y-1 overflow-hidden relative`;
     card.setAttribute('draggable', 'true'); card.ondragstart = (e) => e.dataTransfer.setData("text", task.id);
     
-    // UPDATED: Added Copy Button in the actions div
+    // UPDATED: Injected apptBadge into header
     card.innerHTML = `
         <div class="kanban-card-header text-white px-3 py-2 flex justify-between items-center" style="background-color: ${styles.headerBg}" onclick="window.openViewModalById('${task.id}')">
-            <div class="flex items-center gap-2"><span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 py-0.5 rounded">${task.type}</span>${(task.moe_code && task.moe_code.length > 4) ? `<span class="text-[10px] font-medium opacity-90 tracking-wide border-l border-white/30 pl-2">${task.moe_code.slice(-4)}</span>` : ''}</div><span class="text-xs font-medium">${formatDate(task.closing_date)}</span>
+            <div class="flex items-center gap-2">${apptBadge}<span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 py-0.5 rounded">${task.type}</span>${(task.moe_code && task.moe_code.length > 4) ? `<span class="text-[10px] font-medium opacity-90 tracking-wide border-l border-white/30 pl-2">${task.moe_code.slice(-4)}</span>` : ''}</div><span class="text-xs font-medium">${formatDate(task.closing_date)}</span>
         </div>
         <div class="p-3">
             <h4 class="text-sm font-bold text-gray-800 leading-snug mb-1 line-clamp-2 cursor-pointer hover:text-primary" onclick="window.openViewModalById('${task.id}')">${task.school}</h4>
@@ -318,14 +330,27 @@ function renderTable() {
         const styles = getConsultantStyles(ec);
         const ps = getProgressState(task);
         const segs = PROGRESS_ITEMS.map((item, i) => `<div class="progress-segment ${i<6?(ps.allFirstSix && ps[item.id]?'active-solid':(ps[item.id]?'active-light':'')):(ps.bothLastTwo && ps[item.id]?'active-solid':(ps[item.id]?'active-light':''))}"></div>`).join('');
+        
+        // --- APPOINTMENT DOT LOGIC ---
+        let apptBadge = '';
+        if (task.appointment) {
+            const apptDate = new Date(task.appointment);
+            const now = new Date();
+            if (apptDate > now) {
+                apptBadge = `<span class="appt-dot appt-dot-future" title="Upcoming Appointment: ${new Date(task.appointment).toLocaleString()}"></span>`;
+            } else {
+                apptBadge = `<span class="appt-dot appt-dot-past" title="Past Appointment: ${new Date(task.appointment).toLocaleString()}"></span>`;
+            }
+        }
+
         const tr = document.createElement('tr');
         tr.className = `cursor-pointer border-b border-gray-100 transition-all duration-150`; tr.style.backgroundColor = styles.rowBg;
         tr.onmouseenter = () => { tr.style.filter = "brightness(0.92) saturate(1.05)"; tr.style.zIndex = "10"; tr.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.05)"; tr.style.transform = "scale(1.002)"; }
         tr.onmouseleave = () => { tr.style.filter = "none"; tr.style.zIndex = "auto"; tr.style.boxShadow = "none"; tr.style.transform = "none"; }
         tr.onclick = (e) => { if(!e.target.closest('button') && !e.target.closest('a')) window.openViewModalById(task.id); };
         
-        // UPDATED: Added Copy Button in the actions column
-        tr.innerHTML = `<td class="px-4 sm:px-6 py-4 text-sm font-bold text-gray-700 align-middle">${task.type}</td><td class="px-4 sm:px-6 py-4 align-middle"><div class="text-sm font-bold text-gray-900">${task.school}</div><div class="text-xs text-gray-600">${task.programme}</div><div class="text-xs text-gray-400 font-mono">${task.moe_code||''}</div></td><td class="px-4 sm:px-6 py-4 text-sm text-gray-500 font-mono align-middle">${formatDate(task.closing_date)}</td><td class="px-4 sm:px-6 py-4 text-sm text-gray-600 align-middle whitespace-nowrap"><span class="bg-white border border-gray-200 px-2 py-1 rounded-md text-xs shadow-sm">${getTaskLabel(task)}</span></td><td class="px-4 sm:px-6 py-4 align-middle whitespace-nowrap"><div class="flex flex-col gap-1.5"><span class="px-2.5 py-0.5 text-xs font-bold rounded-full w-fit ${task.status==='In Progress'?'bg-green-100 text-green-800':'bg-gray-100 text-gray-600'}">${task.status}</span><div class="flex gap-0.5 h-1 w-full max-w-[120px] opacity-80">${segs}</div></div></td><td class="px-4 sm:px-6 py-4 text-sm text-gray-500 align-middle">${task.costing_type||'-'}</td><td class="px-4 sm:px-6 py-4 text-right align-middle"><div class="flex gap-2 justify-end"><a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></a><a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg></a><button class="text-gray-400 hover:text-green-600 p-1" onclick="event.stopPropagation(); window.toggleProgress(event, '${task.id}')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></button><button class="text-gray-400 hover:text-purple-600 p-1" onclick="window.copyTaskDetails(event, '${task.id}')" title="Copy Details"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button></div></td>`;
+        // UPDATED: Injected apptBadge into Actions column (last td)
+        tr.innerHTML = `<td class="px-4 sm:px-6 py-4 text-sm font-bold text-gray-700 align-middle">${task.type}</td><td class="px-4 sm:px-6 py-4 align-middle"><div class="text-sm font-bold text-gray-900">${task.school}</div><div class="text-xs text-gray-600">${task.programme}</div><div class="text-xs text-gray-400 font-mono">${task.moe_code||''}</div></td><td class="px-4 sm:px-6 py-4 text-sm text-gray-500 font-mono align-middle">${formatDate(task.closing_date)}</td><td class="px-4 sm:px-6 py-4 text-sm text-gray-600 align-middle whitespace-nowrap"><span class="bg-white border border-gray-200 px-2 py-1 rounded-md text-xs shadow-sm">${getTaskLabel(task)}</span></td><td class="px-4 sm:px-6 py-4 align-middle whitespace-nowrap"><div class="flex flex-col gap-1.5"><span class="px-2.5 py-0.5 text-xs font-bold rounded-full w-fit ${task.status==='In Progress'?'bg-green-100 text-green-800':'bg-gray-100 text-gray-600'}">${task.status}</span><div class="flex gap-0.5 h-1 w-full max-w-[120px] opacity-80">${segs}</div></div></td><td class="px-4 sm:px-6 py-4 text-sm text-gray-500 align-middle">${task.costing_type||'-'}</td><td class="px-4 sm:px-6 py-4 text-right align-middle"><div class="flex gap-2 justify-end items-center">${apptBadge}<a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></a><a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg></a><button class="text-gray-400 hover:text-green-600 p-1" onclick="event.stopPropagation(); window.toggleProgress(event, '${task.id}')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></button><button class="text-gray-400 hover:text-purple-600 p-1" onclick="window.copyTaskDetails(event, '${task.id}')" title="Copy Details"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button></div></td>`;
         tbody.appendChild(tr);
     });
 }
@@ -614,6 +639,26 @@ window.openViewModal = (task) => {
     document.getElementById('view-type').textContent = task.type;
     document.getElementById('view-code').textContent = task.moe_code || '-';
     document.getElementById('view-date').textContent = formatDate(task.closing_date);
+
+    // NEW APPOINTMENT LOGIC
+    const apptEl = document.getElementById('view-appointment');
+    if (task.appointment) {
+        const d = new Date(task.appointment);
+        const now = new Date();
+        const isFuture = d > now;
+        const formatted = d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        
+        if (isFuture) {
+            apptEl.innerHTML = `<span class="appt-dot appt-dot-future mr-2"></span>${formatted}`;
+            apptEl.className = "font-bold text-dark mt-0.5 flex items-center";
+        } else {
+             apptEl.innerHTML = formatted;
+             apptEl.className = "font-semibold text-gray-700 mt-0.5 flex items-center";
+        }
+    } else {
+        apptEl.textContent = "No scheduled appointment";
+        apptEl.className = "text-sm text-gray-400 mt-0.5 italic";
+    }
 
     document.getElementById('view-assignment').textContent = getTaskLabel(task);
     document.getElementById('view-brand').textContent = task.brand || '';
