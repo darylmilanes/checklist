@@ -98,7 +98,7 @@
                     <svg class="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                     <div class="flex flex-col">
                         <h1 class="text-xl font-bold tracking-tight text-dark hidden sm:block leading-none">CheckList</h1>
-                        <span class="text-[10px] text-gray-400 font-mono hidden sm:block leading-none mt-0.5 ml-0.5">version 2.4</span>
+                        <span class="text-[10px] text-gray-400 font-mono hidden sm:block leading-none mt-0.5 ml-0.5">version 2.5</span>
                     </div>
                 </div>
                 
@@ -206,7 +206,7 @@
                 </div>
                 <span class="text-xs text-gray-400 font-mono whitespace-nowrap" id="zones-count">0 Schools</span>
                 <button onclick="window.showAllocationSummary()" class="p-1.5 text-gray-400 hover:text-ios_blue bg-white border border-gray-200 rounded-lg shadow-sm" title="View Summary">
-                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2 2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 </button>
             </div>
         </div>
@@ -380,6 +380,10 @@
                                     <div class="p-3 bg-gray-50 rounded-xl">
                                         <span class="text-xs text-gray-500 block">Closing Date</span>
                                         <div id="view-date" class="font-semibold text-red-500 mt-0.5"></div>
+                                    </div>
+                                    <div class="p-3 bg-gray-50 rounded-xl">
+                                        <span class="text-xs text-gray-500 block">Appointment</span>
+                                        <div id="view-appointment" class="font-semibold text-dark mt-0.5 flex items-center"></div>
                                     </div>
                                 </div>
                             </div>
