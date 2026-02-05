@@ -1356,7 +1356,7 @@ window.exportCSV = () => {
     } else {
         // --- EXISTING TASK EXPORT LOGIC ---
         const headers = [
-            "Export Date", "Item Code", "Closing Date", "Zone", "Consultant", "School", 
+            "Export Date", "Type", "Item Code", "Closing Date", "Zone", "Consultant", "School", 
             "Contact Person 1 Name", "Contact Person 1 Designation", "Contact Person 1 Department", "Contact Person 1 Contact Number", "Contact Person 1 Email", 
             "Contact Person 2 Name", "Contact Person 2 Designation", "Contact Person 2 Department", "Contact Person 2 Contact Number", "Contact Person 2 Email", 
             "Programme Name", "Brand", "Status", "GeBIZ Updated", "Email Follow-up"
@@ -1371,6 +1371,7 @@ window.exportCSV = () => {
             
             return [
                 today,
+                t.type,
                 t.moe_code,
                 t.closing_date,
                 schoolData.zone || '',
