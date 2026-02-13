@@ -45,7 +45,7 @@ textarea {
 
 /* Remove default arrow for inputs that are not selects */
 input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), textarea {
-    background-image: none;
+    background-image: none !important;
 }
 
 /* Focus States */
