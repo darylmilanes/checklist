@@ -1334,7 +1334,16 @@ function toggleView(view) {
 
     const kb = document.getElementById('kanban-view'); const tb = document.getElementById('table-view'); const zv = document.getElementById('zones-view');
     const tl = document.getElementById('toolbar'); const kt = document.getElementById('kanban-toolbar'); const zt = document.getElementById('zones-toolbar');
-    ['view-kanban','view-table','view-zones'].forEach(id => { const btn = document.getElementById(id); if (view === id.replace('view-','')) { btn.classList.add('bg-white', 'shadow-sm', 'text-dark', 'font-semibold'); btn.classList.remove('text-gray-500'); } else { btn.classList.remove('bg-white', 'shadow-sm', 'text-dark', 'font-semibold'); btn.classList.add('text-gray-500'); } });
+    ['view-kanban','view-table','view-zones'].forEach(id => { 
+        const btn = document.getElementById(id); 
+        if (view === id.replace('view-','')) { 
+            btn.classList.add('bg-[#01788C]', 'shadow-sm', 'text-white', 'font-semibold'); 
+            btn.classList.remove('text-gray-500'); 
+        } else { 
+            btn.classList.remove('bg-[#01788C]', 'shadow-sm', 'text-white', 'font-semibold'); 
+            btn.classList.add('text-gray-500'); 
+        } 
+    });
     kb.classList.add('hidden'); tb.classList.add('hidden'); zv.classList.add('hidden'); tl.classList.add('hidden'); kt.classList.add('hidden'); zt.classList.add('hidden');
     
     if(view === 'kanban') { kb.classList.remove('hidden'); kt.classList.remove('hidden'); tl.classList.remove('hidden'); } 
