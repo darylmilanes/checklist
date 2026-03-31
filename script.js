@@ -15,6 +15,10 @@ const firebaseConfig = { apiKey: "AIzaSyAgDFeTSfSfYaUPoDLwmBuPUwmdtd9QuxM", auth
 const appId = "checklist-app-main";
 let db, auth, userId = null;
 let allTasks = [], allSchools = [], allConsultants = [], editingTaskId = null, editingSchoolId = null, activePopoverTaskId = null, currentView = 'kanban';
+// NEW: View Navigation State
+let activeViewTaskId = null;
+let currentFilteredList = [];
+
 // UPDATED: Default sort by Zone first
 let schoolSort = { key: 'zone', dir: 'asc' };
 let currentUserDisplay = sessionStorage.getItem('checklist_username') || '';
@@ -34,7 +38,7 @@ const viewFilters = {
 };
 
 // Legacy Color Map & Zone Colors
-const LEGACY_COLORS = { "Sarah": "#A855F7", "Martin": "#3B82F6", "Krystle": "#EC4899", "Charlynn": "#10B981", "Sapnaa": "#6B7280", "Yuniza": "#EAB308" };
+const LEGACY_COLORS = { "Sarah": "#800020", "Martin": "#3B82F6", "Krystle": "#EC4899", "Charlynn": "#10B981", "Sapnaa": "#6B7280", "Yuniza": "#EAB308" };
 // CSS classes mapped to Zone names
 const ZONE_COLORS = { "East": "bg-zone-east", "North": "bg-zone-north", "South": "bg-zone-south", "West": "bg-zone-west" };
 
@@ -52,7 +56,13 @@ const linkify = (text) => {
     // Simple Regex for URLs (http/https/ftp)
     const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
     return text.replace(urlRegex, (url) => {
-        return `<a href="${url}" target="_blank" class="inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 text-xs hover:bg-blue-200 transition-colors break-all align-middle mt-1 mb-1" onclick="event.stopPropagation()">${url}</a>`;
+        // Clean up the display text by removing http(s):// and www.
+        let displayText = url.replace(/^https?:\/\/(www\.)?/, '');
+        // Cut the text short and add an ellipsis if it's over 25 characters
+        if (displayText.length > 25) {
+            displayText = displayText.substring(0, 25) + '...';
+        }
+        return `<a href="${url}" target="_blank" class="inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 text-xs hover:bg-blue-200 transition-colors align-middle mt-1 mb-1 truncate max-w-[200px]" onclick="event.stopPropagation()">${displayText}</a>`;
     });
 }
 
@@ -264,26 +274,64 @@ window.copyTaskDetails = (e, id) => {
 };
 
 function renderKanban() {
-    const itqC = document.getElementById('kanban-area-itq'); const svpC = document.getElementById('kanban-area-svp'); itqC.innerHTML = ''; svpC.innerHTML = '';
+    const itqC = document.getElementById('kanban-area-itq'); 
+    const svpC = document.getElementById('kanban-area-svp'); 
+    const mainContent = document.getElementById('main-content');
+
+    // 1. MEMORIZE SCROLL POSITIONS BEFORE CLEARING
+    const scrollState = {
+        mainY: mainContent.scrollTop,
+        itqX: itqC.scrollLeft,
+        svpX: svpC.scrollLeft,
+        columnsY: Array.from(document.querySelectorAll('.kanban-column-content')).map(col => col.scrollTop)
+    };
+
+    // Clear the boards
+    itqC.innerHTML = ''; 
+    svpC.innerHTML = '';
+    
     const filtered = filterTasks(allTasks);
+    // Determine Today for Glow Effect
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+
     KANBAN_STATUSES.forEach(status => {
         const tasks = filtered.filter(t => t.status === status).sort((a,b) => new Date(a.closing_date||'9999-12-31') - new Date(b.closing_date||'9999-12-31'));
-        itqC.appendChild(createKanbanColumn(status, tasks.filter(t => t.type !== 'SVP'))); svpC.appendChild(createKanbanColumn(status, tasks.filter(t => t.type === 'SVP')));
+        itqC.appendChild(createKanbanColumn(status, tasks.filter(t => t.type !== 'SVP'), today)); 
+        svpC.appendChild(createKanbanColumn(status, tasks.filter(t => t.type === 'SVP'), today));
+    });
+
+    // 2. RESTORE SCROLL POSITIONS AFTER REDRAWING
+    // We use requestAnimationFrame to wait exactly 1 frame so the browser has time to paint the new HTML before we scroll it
+    requestAnimationFrame(() => {
+        mainContent.scrollTop = scrollState.mainY;
+        itqC.scrollLeft = scrollState.itqX;
+        svpC.scrollLeft = scrollState.svpX;
+        
+        const newCols = document.querySelectorAll('.kanban-column-content');
+        newCols.forEach((col, index) => {
+            if (scrollState.columnsY[index] !== undefined) {
+                col.scrollTop = scrollState.columnsY[index];
+            }
+        });
     });
 }
 
-function createKanbanColumn(status, tasks) {
+function createKanbanColumn(status, tasks, today) {
     const col = document.createElement('div'); col.className = 'kanban-column bg-white rounded-2xl shadow-ios border border-gray-100 flex flex-col h-[600px] flex-shrink-0 snap-center';
     col.innerHTML = `<div class="p-4 border-b border-gray-100 font-semibold text-gray-700 flex justify-between items-center ${status==='Skipped'?'bg-gray-200':'bg-gray-50'} rounded-t-2xl"><span class="text-sm uppercase tracking-wide">${status}</span><span class="bg-white border border-gray-200 text-gray-600 text-xs px-2 py-0.5 rounded-full font-bold">${tasks.length}</span></div><div class="kanban-column-content p-3 flex-grow overflow-y-auto space-y-3 bg-gray-50/30 custom-scrollbar" ondragover="window.allowDrop(event)" ondrop="window.drop(event, '${status}')"></div>`;
-    const list = col.querySelector('.kanban-column-content'); tasks.forEach(task => list.appendChild(createKanbanCard(task))); return col;
+    const list = col.querySelector('.kanban-column-content'); tasks.forEach(task => list.appendChild(createKanbanCard(task, today))); return col;
 }
 
-function createKanbanCard(task) {
+function createKanbanCard(task, today) {
     const ec = task.assignment ? task.assignment.split(',')[0].trim() : '';
     const styles = getConsultantStyles(ec);
     const ps = getProgressState(task);
     const segs = PROGRESS_ITEMS.map((item, i) => `<div class="progress-segment ${i<6?(ps.allFirstSix && ps[item.id]?'active-solid':(ps[item.id]?'active-light':'')):(ps.bothLastTwo && ps[item.id]?'active-solid':(ps[item.id]?'active-light':''))}"></div>`).join('');
     
+    // GLOW EFFECT LOGIC
+    const isClosingToday = task.closing_date === today;
+    const dateClass = isClosingToday ? 'glow-today' : 'text-xs font-medium';
+
     // --- APPOINTMENT DOT LOGIC ---
     let apptBadge = '';
     if (task.appointment) {
@@ -303,7 +351,7 @@ function createKanbanCard(task) {
     // UPDATED: Injected apptBadge into header
     card.innerHTML = `
         <div class="kanban-card-header text-white px-3 py-2 flex justify-between items-center" style="background-color: ${styles.headerBg}" onclick="window.openViewModalById('${task.id}')">
-            <div class="flex items-center gap-2">${apptBadge}<span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 py-0.5 rounded">${task.type}</span>${(task.moe_code && task.moe_code.length > 4) ? `<span class="text-[10px] font-medium opacity-90 tracking-wide border-l border-white/30 pl-2">${task.moe_code.slice(-4)}</span>` : ''}</div><span class="text-xs font-medium">${formatDate(task.closing_date)}</span>
+            <div class="flex items-center gap-2">${apptBadge}<span class="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-1.5 py-0.5 rounded">${task.type}</span>${(task.moe_code && task.moe_code.length > 4) ? `<span class="text-[10px] font-medium opacity-90 tracking-wide border-l border-white/30 pl-2">${task.moe_code.slice(-4)}</span>` : ''}</div><span class="${dateClass}">${formatDate(task.closing_date)}</span>
         </div>
         <div class="p-3">
             <h4 class="text-sm font-bold text-gray-800 leading-snug mb-1 line-clamp-2 cursor-pointer hover:text-primary" onclick="window.openViewModalById('${task.id}')">${task.school}</h4>
@@ -325,12 +373,20 @@ function createKanbanCard(task) {
 function renderTable() {
     const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
     const tasks = filterTasks(allTasks).sort((a, b) => (KANBAN_STATUSES.indexOf(a.status) - KANBAN_STATUSES.indexOf(b.status)) || (new Date(a.closing_date||'9999-12-31') - new Date(b.closing_date||'9999-12-31')));
+    
+    // Determine Today for Glow Effect
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+
     tasks.forEach(task => {
         const ec = task.assignment ? task.assignment.split(',')[0].trim() : '';
         const styles = getConsultantStyles(ec);
         const ps = getProgressState(task);
         const segs = PROGRESS_ITEMS.map((item, i) => `<div class="progress-segment ${i<6?(ps.allFirstSix && ps[item.id]?'active-solid':(ps[item.id]?'active-light':'')):(ps.bothLastTwo && ps[item.id]?'active-solid':(ps[item.id]?'active-light':''))}"></div>`).join('');
         
+        // GLOW EFFECT LOGIC
+        const isClosingToday = task.closing_date === today;
+        const dateClass = isClosingToday ? 'glow-today' : 'text-sm text-gray-500 font-mono';
+
         // --- APPOINTMENT DOT LOGIC ---
         let apptBadge = '';
         if (task.appointment) {
@@ -350,7 +406,7 @@ function renderTable() {
         tr.onclick = (e) => { if(!e.target.closest('button') && !e.target.closest('a')) window.openViewModalById(task.id); };
         
         // UPDATED: Injected apptBadge into Actions column (last td)
-        tr.innerHTML = `<td class="px-4 sm:px-6 py-4 text-sm font-bold text-gray-700 align-middle">${task.type}</td><td class="px-4 sm:px-6 py-4 align-middle"><div class="text-sm font-bold text-gray-900">${task.school}</div><div class="text-xs text-gray-600">${task.programme}</div><div class="text-xs text-gray-400 font-mono">${task.moe_code||''}</div></td><td class="px-4 sm:px-6 py-4 text-sm text-gray-500 font-mono align-middle">${formatDate(task.closing_date)}</td><td class="px-4 sm:px-6 py-4 text-sm text-gray-600 align-middle whitespace-nowrap"><span class="bg-white border border-gray-200 px-2 py-1 rounded-md text-xs shadow-sm">${getTaskLabel(task)}</span></td><td class="px-4 sm:px-6 py-4 align-middle whitespace-nowrap"><div class="flex flex-col gap-1.5"><span class="px-2.5 py-0.5 text-xs font-bold rounded-full w-fit ${task.status==='In Progress'?'bg-green-100 text-green-800':'bg-gray-100 text-gray-600'}">${task.status}</span><div class="flex gap-0.5 h-1 w-full max-w-[120px] opacity-80">${segs}</div></div></td><td class="px-4 sm:px-6 py-4 text-sm text-gray-500 align-middle">${task.costing_type||'-'}</td><td class="px-4 sm:px-6 py-4 text-right align-middle"><div class="flex gap-2 justify-end items-center">${apptBadge}<a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></a><a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg></a><button class="text-gray-400 hover:text-green-600 p-1" onclick="event.stopPropagation(); window.toggleProgress(event, '${task.id}')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></button><button class="text-gray-400 hover:text-purple-600 p-1" onclick="window.copyTaskDetails(event, '${task.id}')" title="Copy Details"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button></div></td>`;
+        tr.innerHTML = `<td class="px-4 sm:px-6 py-4 text-sm font-bold text-gray-700 align-middle">${task.type}</td><td class="px-4 sm:px-6 py-4 align-middle"><div class="text-sm font-bold text-gray-900">${task.school}</div><div class="text-xs text-gray-600">${task.programme}</div><div class="text-xs text-gray-400 font-mono">${task.moe_code||''}</div></td><td class="px-4 sm:px-6 py-4 align-middle ${dateClass}">${formatDate(task.closing_date)}</td><td class="px-4 sm:px-6 py-4 text-sm text-gray-600 align-middle whitespace-nowrap"><span class="bg-white border border-gray-200 px-2 py-1 rounded-md text-xs shadow-sm">${getTaskLabel(task)}</span></td><td class="px-4 sm:px-6 py-4 align-middle whitespace-nowrap"><div class="flex flex-col gap-1.5"><span class="px-2.5 py-0.5 text-xs font-bold rounded-full w-fit ${task.status==='In Progress'?'bg-green-100 text-green-800':'bg-gray-100 text-gray-600'}">${task.status}</span><div class="flex gap-0.5 h-1 w-full max-w-[120px] opacity-80">${segs}</div></div></td><td class="px-4 sm:px-6 py-4 text-sm text-gray-500 align-middle">${task.costing_type||'-'}</td><td class="px-4 sm:px-6 py-4 text-right align-middle"><div class="flex gap-2 justify-end items-center">${apptBadge}<a href="${task.specs}" target="_blank" class="text-gray-400 hover:text-ios_blue p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg></a><a href="${task.folder}" target="_blank" class="text-gray-400 hover:text-accent p-1" onclick="event.stopPropagation()"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg></a><button class="text-gray-400 hover:text-green-600 p-1" onclick="event.stopPropagation(); window.toggleProgress(event, '${task.id}')"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></button><button class="text-gray-400 hover:text-purple-600 p-1" onclick="window.copyTaskDetails(event, '${task.id}')" title="Copy Details"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button></div></td>`;
         tbody.appendChild(tr);
     });
 }
@@ -623,8 +679,38 @@ function filterTasks(tasks) {
 ['table-search','filter-type','filter-ec','filter-status'].forEach(id => document.getElementById(id).addEventListener(id==='table-search'?'input':'change', refreshView));
 
 // --- VIEW MODAL LOGIC (New v2.1) ---
+// NEW: View Navigation Logic
+function updateNavButtons(index) {
+    document.getElementById('nav-prev').classList.toggle('hidden', index <= 0);
+    document.getElementById('nav-next').classList.toggle('hidden', index >= currentFilteredList.length - 1);
+}
+
+window.navigateTask = (direction) => {
+    const currentIndex = currentFilteredList.findIndex(t => t.id === activeViewTaskId);
+    const newIndex = currentIndex + direction;
+
+    if (newIndex >= 0 && newIndex < currentFilteredList.length) {
+        window.openViewModal(currentFilteredList[newIndex]);
+    }
+};
+
 window.openViewModalById = (id) => { const task = allTasks.find(t => t.id === id); if(task) window.openViewModal(task); };
 window.openViewModal = (task) => {
+    // 1. Navigation Setup
+    activeViewTaskId = task.id;
+    // Recalculate filtered list to ensure navigation matches current filters
+    // Use the same sort order as Table View (Status -> Date) for consistent "Next/Prev" flow
+    currentFilteredList = filterTasks(allTasks).sort((a, b) => (KANBAN_STATUSES.indexOf(a.status) - KANBAN_STATUSES.indexOf(b.status)) || (new Date(a.closing_date||'9999-12-31') - new Date(b.closing_date||'9999-12-31')));
+    
+    const currentIndex = currentFilteredList.findIndex(t => t.id === task.id);
+    updateNavButtons(currentIndex);
+
+    // --- NEW: Apply Dynamic Header Color ---
+    const ec = task.assignment ? task.assignment.split(',')[0].trim() : '';
+    const styles = getConsultantStyles(ec);
+    document.getElementById('view-modal-header').style.backgroundColor = styles.headerBg;
+    // ---------------------------------------
+
     // Populate simple fields
     document.getElementById('view-modal-title').textContent = task.school;
     document.getElementById('view-modal-status').textContent = task.status;
@@ -638,7 +724,16 @@ window.openViewModal = (task) => {
     // UPDATED: Populate Separate Rows
     document.getElementById('view-type').textContent = task.type;
     document.getElementById('view-code').textContent = task.moe_code || '-';
-    document.getElementById('view-date').textContent = formatDate(task.closing_date);
+    
+    // View Modal Date Glow Check
+    const dateEl = document.getElementById('view-date');
+    const today = new Date().toLocaleDateString('en-CA');
+    if (task.closing_date === today) {
+        dateEl.className = 'glow-today mt-0.5';
+    } else {
+        dateEl.className = 'font-semibold text-red-500 mt-0.5';
+    }
+    dateEl.textContent = formatDate(task.closing_date);
 
     // NEW APPOINTMENT LOGIC
     const apptEl = document.getElementById('view-appointment');
