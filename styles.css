@@ -1,7 +1,7 @@
 /* Zoom Prevention & Touch Action */
 html { touch-action: manipulation; }
 body { 
-    background-color: #F2F2F7; 
+    background-color: #fafeff; 
     color: #1C1C1E; 
     -webkit-font-smoothing: antialiased; 
     overscroll-behavior-y: none;
@@ -22,7 +22,7 @@ body {
 /* UNIFIED FORM STYLES - Matches Inputs & Dropdowns */
 input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]), textarea, select { 
     appearance: none; -webkit-appearance: none; 
-    background-color: #FFFFFF; 
+    background-color: #fafeff; 
     border: 1px solid #D1D5DB; /* border-gray-300 */
     border-radius: 0.75rem; /* rounded-xl */
     padding: 0.75rem 1.25rem; /* Fallback padding */
@@ -44,23 +44,23 @@ textarea {
 }
 
 /* Remove default arrow for inputs that are not selects */
-input:not([type="checkbox"]):not([type="radio"]):not([type="color"]), textarea {
-    background-image: none !important;
+input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]), textarea {
+    background-image: none;
 }
 
 /* Focus States */
 input:not([type="checkbox"]):not([type="color"]):focus, textarea:focus, select:focus { 
     outline: none; 
-    border-color: #007AFF; 
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1); 
+    border-color: #01788C; 
+    box-shadow: 0 0 0 3px rgba(1, 120, 140, 0.1); 
 }
 
-input[type="checkbox"] { accent-color: #007AFF; width: 1rem; height: 1rem; cursor: pointer; }
+input[type="checkbox"] { accent-color: #01788C; width: 1rem; height: 1rem; cursor: pointer; }
 
 /* Progress Bar Styles */
 .progress-segment { height: 4px; flex: 1; border-radius: 2px; background-color: #E5E5EA; transition: background-color 0.3s ease; }
-.progress-segment.active-light { background-color: #dd5500; }
-.progress-segment.active-solid { background-color: #008430; }
+.progress-segment.active-light { background-color: #dd2500; }
+.progress-segment.active-solid { background-color: #01788C; }
 
 @media (max-width: 640px) {
     .kanban-column { min-width: 88vw; width: 88vw; max-width: 88vw; height: 72vh; }
@@ -179,3 +179,16 @@ td { vertical-align: middle; }
     70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(186, 174, 0, 0); }
     100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(186, 174, 0, 0); }
 }
+
+/* CLOSING TODAY GLOW ALERT */
+@keyframes pulse-red-glow {
+    0% { color: #EF4444; text-shadow: 0 0 0px rgba(239, 68, 68, 0); }
+    50% { color: #B91C1C; text-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
+    100% { color: #EF4444; text-shadow: 0 0 0px rgba(239, 68, 68, 0); }
+}
+
+.glow-today {
+    animation: pulse-red-glow 2s infinite ease-in-out;
+    font-weight: 800 !important;
+}
+
