@@ -336,27 +336,36 @@
                 </div>
             </button>
         </div>
-        <button id="main-fab" class="w-14 h-14 bg-ios_blue text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center focus:outline-none active:scale-95" onclick="window.toggleFabMenu()">
+        <button id="main-fab" class="w-14 h-14 bg-[#01788C] text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center focus:outline-none active:scale-95" onclick="window.toggleFabMenu()">
             <svg id="fab-icon" class="w-6 h-6 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
         </button>
     </div>
 
     <div id="view-modal-overlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-all duration-300" onclick="if(event.target === this) this.classList.add('hidden')">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all scale-100">
-            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/80 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center">
-                 <div class="flex items-center gap-3">
-                    <h3 id="view-modal-title" class="text-xl font-bold text-dark">Task Details</h3>
-                    <span id="view-modal-status" class="px-2 py-1 rounded text-xs font-bold bg-gray-100 text-gray-600">Status</span>
-                 </div>
-                 <div class="flex items-center gap-2">
-                    <button id="view-edit-btn" class="p-2 rounded-full hover:bg-blue-50 text-ios_blue transition" title="Edit Task">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                    </button>
-                    <button onclick="document.getElementById('view-modal-overlay').classList.add('hidden')" class="p-2 rounded-full hover:bg-gray-200 text-gray-500 transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                 </div>
-            </div>
+        
+        <!-- Navigation Arrows (New) -->
+        <button id="nav-prev" onclick="window.navigateTask(-1)" class="fixed left-4 top-1/2 -translate-y-1/2 p-4 text-white/30 hover:text-white/80 transition-all z-[60] hidden outline-none focus:text-white">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <button id="nav-next" onclick="window.navigateTask(1)" class="fixed right-4 top-1/2 -translate-y-1/2 p-4 text-white/30 hover:text-white/80 transition-all z-[60] hidden outline-none focus:text-white">
+            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all scale-100 z-[65]">
+            <div id="view-modal-header" class="px-6 py-4 border-b border-gray-100 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center transition-colors duration-200">
+     <div class="flex items-center gap-3">
+        <h3 id="view-modal-title" class="text-xl font-bold text-white">Task Details</h3>
+        <span id="view-modal-status" class="px-2 py-1 rounded text-xs font-bold bg-white/20 text-white border border-white/30">Status</span>
+     </div>
+     <div class="flex items-center gap-2">
+        <button id="view-edit-btn" class="p-2 rounded-full hover:bg-white/20 text-white transition" title="Edit Task">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+        </button>
+        <button onclick="document.getElementById('view-modal-overlay').classList.add('hidden')" class="p-2 rounded-full hover:bg-white/20 text-white transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+     </div>
+</div>
             <div class="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-grow bg-white">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div class="space-y-6">
@@ -456,10 +465,10 @@
 
     <div id="modal-overlay" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 hidden flex items-center justify-center p-4 transition-all duration-300">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all scale-100">
-            <div class="px-6 py-4 border-b border-gray-100 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+            <div class="px-6 py-4 border-b border-gray-100 bg-[#01788C] sticky top-0 z-10">
                 <div class="flex justify-between items-center">
-                    <h3 id="modal-title" class="text-lg font-bold text-dark">New Task</h3>
-                    <button id="close-modal-btn" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                    <h3 id="modal-title" class="text-lg font-bold text-white">New Task</h3>
+                    <button id="close-modal-btn" class="w-8 h-8 bg-[#01788C]/30 rounded-full flex items-center justify-center text-[] hover:bg-gray-200 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                 </div>
             </div>
             <div class="p-6 overflow-y-auto custom-scrollbar flex-grow bg-white">
@@ -512,7 +521,7 @@
                     </div>
 
                     <div class="md:col-span-2">
-                         <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Trainers</span><textarea id="f_trainers" rows="3" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1 bg-white"></textarea></label>
+                         <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Trainers</span><textarea id="f_trainers" rows="10" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1 bg-white"></textarea></label>
                     </div>
                     
                     <div class="md:col-span-2 bg-gray-50/80 p-5 rounded-2xl border border-gray-200">
@@ -523,11 +532,12 @@
                                     <option value="Package">Package</option>
                                     <option value="Participant">Participant</option>
                                     <option value="Hour">Hour</option>
+                                    <option value="Monthly">Monthly</option>
                                 </select>
                             </label>
                             <div id="costing-details" class="grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
-                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Specs</span><textarea id="f_cost_specs" rows="3" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1 bg-white"></textarea></label>
-                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Cost</span><textarea id="f_cost_val" rows="3" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1 bg-white"></textarea></label>
+                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Specs</span><textarea id="f_cost_specs" rows="10" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1 bg-white"></textarea></label>
+                                <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Cost</span><textarea id="f_cost_val" rows="10" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1 bg-white"></textarea></label>
                             </div>
                         </div>
                     </div>
@@ -538,7 +548,7 @@
                             <table class="w-full text-xs text-left border-collapse" id="contacts-table">
                                 <thead class="bg-gray-50 font-semibold text-gray-600">
                                     <tr>
-                                        <th class="p-2 border-b border-r border-gray-200 w-1/5">Name (Req)</th>
+                                        <th class="p-2 border-b border-r border-gray-200 w-1/5">Name</th>
                                         <th class="p-2 border-b border-r border-gray-200 w-1/5">Designation</th>
                                         <th class="p-2 border-b border-r border-gray-200 w-1/5">Dept</th>
                                         <th class="p-2 border-b border-r border-gray-200 w-1/5">Contact #</th>
@@ -556,7 +566,7 @@
                     </div>
                     
                     <div class="md:col-span-2 border-t border-gray-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Notes</span><textarea id="f_notes" rows="3" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1 bg-white text-dark"></textarea></label>
+                        <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Notes</span><textarea id="f_notes" rows="6" class="w-full rounded-xl border-gray-300 pl-5 py-3 text-sm mt-1 bg-white text-dark"></textarea></label>
                         <div class="space-y-5">
                             <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Appointment</span><input type="datetime-local" id="f_appointment" class="text-dark"></label>
                             <label class="block"><span class="text-xs font-semibold text-gray-600 ml-1">Status *</span>
