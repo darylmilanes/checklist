@@ -141,6 +141,20 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="relative">
+                    <button id="reminder-btn" onclick="window.toggleReminders()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:text-accent hover:bg-orange-50 flex items-center justify-center transition outline-none">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0012 18.75c-1.03 0-1.9-.4-2.593-1.003l-.547-.547z"></path></svg>
+                    </button>
+                    <div id="reminder-popover" class="absolute right-0 top-12 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 hidden z-50 overflow-hidden transform origin-top-right transition-all">
+                        <div class="bg-orange-50 px-4 py-3 border-b border-orange-100">
+                            <h3 class="text-xs font-bold uppercase text-orange-700 tracking-wider">My Personal Notes</h3>
+                        </div>
+                        <div class="p-2">
+                            <textarea id="personal-reminders" rows="10" class="w-full border-none focus:ring-0 text-sm bg-transparent placeholder-gray-400 resize-none custom-scrollbar" placeholder="Type your reminders here... (Auto-saves)" oninput="window.saveReminders()"></textarea>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
