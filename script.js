@@ -9,12 +9,13 @@ if ('serviceWorker' in navigator) {
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, addDoc, onSnapshot, collection, query, updateDoc, deleteDoc, serverTimestamp, orderBy, getDocs, limit, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+// Note: I added "where" to the list below
+import { getFirestore, doc, getDoc, setDoc, addDoc, onSnapshot, collection, query, where, updateDoc, deleteDoc, serverTimestamp, orderBy, getDocs, limit, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 const firebaseConfig = { apiKey: "AIzaSyAgDFeTSfSfYaUPoDLwmBuPUwmdtd9QuxM", authDomain: "checklist-c4255.firebaseapp.com", projectId: "checklist-c4255", storageBucket: "checklist-c4255.firebasestorage.app", messagingSenderId: "64837874160", appId: "1:64837874160:web:9fc4a131f16a33e9f3ed35" };
 const appId = "checklist-app-main";
 let db, auth, userId = null;
 let allTasks = [], allSchools = [], allConsultants = [], editingTaskId = null, editingSchoolId = null, activePopoverTaskId = null, currentView = 'kanban';
+let reminderTimeout = null;
 // NEW: View Navigation State
 let activeViewTaskId = null;
 let currentFilteredList = [];
@@ -1538,3 +1539,59 @@ document.addEventListener('click', (e) => {
 });
 
 initApp();
+
+// Toggle and Load Reminders
+window.toggleReminders = async () => {
+    const pop = document.getElementById('reminder-popover');
+    pop.classList.toggle('hidden');
+    
+    if (!pop.classList.contains('hidden')) {
+        if (!currentUserDisplay) return;
+        
+        // Directly look for the document named after you (in Uppercase)
+        const nameKey = currentUserDisplay.toUpperCase().trim();
+        const docRef = doc(db, `artifacts/${appId}/public/data/reminders`, nameKey);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+            document.getElementById('personal-reminders').value = docSnap.data().text;
+        } else {
+            document.getElementById('personal-reminders').value = '';
+        }
+    }
+};
+
+// Auto-save with a 1-second delay (Debounce)
+// Auto-save: Updates your single personal entry
+window.saveReminders = () => {
+    clearTimeout(reminderTimeout);
+    if (!currentUserDisplay) return; // Don't save if no name
+    
+    reminderTimeout = setTimeout(async () => {
+        const text = document.getElementById('personal-reminders').value;
+        const nameKey = currentUserDisplay.toUpperCase().trim(); // Force Uppercase ID
+        
+        // Use setDoc to OVERWRITE your existing note instead of creating a new one
+        await setDoc(doc(db, `artifacts/${appId}/public/data/reminders`, nameKey), {
+            user: nameKey,
+            text: text,
+            updatedAt: serverTimestamp()
+        });
+    }, 1000);
+};
+
+// Replace your old "document.addEventListener('click', ...)" block with this:
+document.addEventListener('click', (e) => {
+    // 1. We must define "remPop" so the code knows what the box is
+    const remPop = document.getElementById('reminder-popover');
+    const remBtn = document.getElementById('reminder-btn');
+    
+    // 2. Check if the notepad exists and is currently visible
+    if (remPop && !remPop.classList.contains('hidden')) {
+        
+        // 3. If the click was NOT on the lightbulb AND NOT inside the note box, hide it
+        if (!remBtn.contains(e.target) && !remPop.contains(e.target)) {
+            remPop.classList.add('hidden');
+        }
+    }
+});
